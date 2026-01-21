@@ -1,97 +1,173 @@
-/* Contenedor de fondo */
-.login-container {
+/* === Fondo animado === */
+.login-background {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background: #121212; /* fondo negro */
-  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #003366, #3e5368, #0066cc);
+  background-size: 300% 300%;
+  animation: gradientShift 8s ease infinite;
+  font-family: "Poppins", sans-serif;
 }
 
-/* Formulario */
-.login-form {
-  background: #fff;
-  padding: 40px 30px;
-  border-radius: 15px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* === Contenedor === */
+.login-container {
+  backdrop-filter: blur(15px);
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 40px 50px;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
   width: 350px;
   text-align: center;
+  color: white;
 }
 
-.login-form h2 {
+.login-title {
+  font-size: 1.3rem;
+  font-weight: 600;
   margin-bottom: 25px;
-  color: #333;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255,255,255,0.3);
 }
 
-/* Inputs */
-.input-group {
-  margin-bottom: 20px;
+/* === Inputs === */
+.input-group-login {
+  margin-bottom: 18px;
   text-align: left;
 }
 
-.input-group label {
-  display: block;
+.input-group-login label {
+  font-size: 0.9rem;
   margin-bottom: 5px;
-  color: #555;
+  display: block;
+  color: #f1f1f1;
 }
 
-.input-icon {
+.input-icon-login {
   position: relative;
 }
 
-.input-icon .icon {
+.input-icon-login .icon {
   position: absolute;
   top: 50%;
   left: 12px;
   transform: translateY(-50%);
-  color: #888;
+  color: #bbb;
+  transition: color 0.3s;
 }
 
-.input-icon input {
+.input-icon-login .icon.active {
+  color: #00bfff;
+}
+
+.input-icon-login input {
   width: 90%;
-  padding: 10px 10px 10px 35px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  padding: 10px 1px 10px 35px;
+  border-radius: 10px;
+  border: none;
   outline: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
   transition: all 0.3s;
 }
 
-.input-icon input:focus {
-  border-color: #2575fc;
-  box-shadow: 0 0 5px rgba(37, 117, 252, 0.5);
+.input-icon-login input::placeholder {
+  color: #ccc;
 }
 
-/* Toggle contraseña */
+.input-icon-login input:focus {
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 5px #00bfff;
+}
+
+/* === Mostrar contraseña === */
 .toggle-password {
   position: absolute;
   top: 50%;
   right: 12px;
   transform: translateY(-50%);
   cursor: pointer;
-  color: #888;
+  color: #ccc;
 }
 
-/* Botón */
+/* Recordarme */
+.input-group.remember label {
+  font-size: 0.85rem;
+  color: #dadfe6;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* === Botón === */
 button {
   width: 100%;
   padding: 12px;
   border: none;
-  background: #2575fc;
+  background: #012b39;
   color: white;
-  font-size: 16px;
-  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 button:hover {
-  background: #6a11cb;
+  background: #0099cc;
+  box-shadow: 0 0 10px rgba(0, 191, 255, 0.6);
 }
 
-/* Texto extra */
+/* Loader dentro del botón */
+.button-loader {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* === Texto extra === */
 .forgot-password {
-  margin-top: 15px;
-  font-size: 14px;
-  color: #555;
+  margin-top: 18px;
+  font-size: 0.85rem;
+  color: #ddd;
   cursor: pointer;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+  color: #fff;
+}
+
+/* === Animación entrada === */
+.fade-in {
+  animation: fadeIn 0.7s ease forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === Responsive === */
+@media (max-width: 420px) {
+  .login-container {
+    width: 90%;
+    padding: 30px 20px;
+  }
 }

@@ -1,72 +1,136 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { 
-  FaHome, 
-  FaPlusCircle, 
-  FaUserTie, 
-  FaBoxOpen, 
-  FaHistory, 
-  FaChartBar, 
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  FaHome,
+  FaPlusCircle,
+  FaUserTie,
+  FaBoxOpen,
+  FaHistory,
+  FaBuilding,
+  FaFileAlt,
   FaTools,
   FaSignOutAlt,
-  FaBars
+  FaPowerOff,
 } from "react-icons/fa";
-
 import "../styles/Sidebar.css";
+import logoEPESPO from "../assets/logo1_epespo.jpeg";
+
+import axiosClient from "../api/axiosClient";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+import { esLector } from "../utils/permisos";
 
 const Sidebar = () => {
-  const [isOpen, setIsOpen] = useState(true);
   const navigate = useNavigate();
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  const location = useLocation();
+  const lector = esLector();
 
+  const [cerrando, setCerrando] = useState(false);
   const menuItems = [
     { name: "Inicio", icon: <FaHome />, route: "/dashboard" },
-    { name: "Agregar Producto", icon: <FaPlusCircle />, route: "/agregar-producto" },
+    { name: "Agregar Bien", icon: <FaPlusCircle />, route: "/agregar-producto" },
     { name: "Responsable", icon: <FaUserTie />, route: "/responsable" },
-    { name: "Asignacion", icon: <FaBoxOpen />, route: "/asignacion" },
-    { name: "Historial", icon: <FaHistory />, route: "/responsable" },
-    { name: "Reportes", icon: <FaChartBar />, route: "/responsable" },
-    { name: "Ajuste", icon: <FaTools />, route: "/responsable" },
+    { name: "Asignación", icon: <FaBoxOpen />, route: "/asignacion" },
+    { name: "Historial", icon: <FaHistory />, route: "/historial" },
+    { name: "Departamento", icon: <FaBuilding />, route: "/departamento" },
+{ name: "Dar baja", icon: <FaPowerOff />, route: "/dar-baja", ocultarLector: true },
+    { name: "Actas", icon: <FaFileAlt />, route: "/actas", ocultarLector: true },
+    { name: "Ajustes", icon: <FaTools />, route: "/ajustes", ocultarLector: true },
   ];
 
-  const logoutItem = { name: "Cerrar Sesión", icon: <FaSignOutAlt /> };
+  const menuVisible = menuItems.filter((item) => !(lector && item.ocultarLector));
 
-  const handleLogout = () => {
-    // Aquí puedes limpiar tokens o info del usuario si lo necesitas
-    navigate("/"); // Redirige al login
+  const handleLogout = async () => {
+    if (cerrando) return;
+    setCerrando(true);
+
+    const toastId = toast.loading("Cerrando sesión...", { position: "top-right" });
+
+    try {
+      await axiosClient.post("/logout");
+    } catch (error) {
+      const status = error?.response?.status;
+
+      toast.update(toastId, {
+        render:
+          status === 401
+            ? "Sesión vencida. Cerrando sesión..."
+            : "No se pudo contactar al servidor. Cerrando sesión...",
+        type: "warning",
+        isLoading: false,
+        autoClose: 1200,
+      });
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("rol");
+      localStorage.removeItem("user");
+
+      setTimeout(() => {
+        setCerrando(false);
+        navigate("/login");
+      }, 900);
+
+      return;
+    }
+
+    toast.update(toastId, {
+      render: "Sesión cerrada correctamente",
+      type: "success",
+      isLoading: false,
+      autoClose: 1200,
+    });
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("rol");
+    localStorage.removeItem("user");
+
+    setTimeout(() => {
+      setCerrando(false);
+      navigate("/login");
+    }, 900);
   };
 
   return (
-    <div className={`sidebar ${isOpen ? "open" : "closed"}`}>
-      <div className="top-section">
-        <h2 className="logo">{isOpen ? "EPESPO" : "E"}</h2>
-        <button className="toggle-btn" onClick={toggleSidebar}>
-          <FaBars />
-        </button>
-      </div>
+    <>
+      <ToastContainer position="top-right" autoClose={2000} hideProgressBar closeButton={false} />
 
-      <ul className="menu">
-        {menuItems.map((item, index) => (
-          <li 
-            key={index} 
-            className="menu-item"
-            onClick={() => navigate(item.route)}
-          >
-            <span className="icon">{item.icon}</span>
-            {isOpen && <span className="text">{item.name}</span>}
-          </li>
-        ))}
-      </ul>
+      <aside className="sidebar">
+        <div className="sidebar-header">
+          <div className="logo-box">
+            <img src={logoEPESPO} alt="EPESPO" className="logo-img" />
+          </div>
+          <div className="school-title">
+            <span className="epespo-title">EPESPO</span>
+            <span className="school-subtitle">ESCUELA DE PESCA DEL PACÍFICO ORIENTAL</span>
+          </div>
+        </div>
 
-      <hr className="divider" />
+        <ul className="menu">
+          {menuVisible.map((item) => (
+            <li
+              key={item.name}
+              className={location.pathname === item.route ? "menu-item active" : "menu-item"}
+              onClick={() => navigate(item.route)}
+            >
+              <span className="icon">{item.icon}</span>
+              <span className="text">{item.name}</span>
+            </li>
+          ))}
+        </ul>
 
-      <ul className="menu">
-        <li className="menu-item logout" onClick={handleLogout}>
-          <span className="icon">{logoutItem.icon}</span>
-          {isOpen && <span className="text">{logoutItem.name}</span>}
-        </li>
-      </ul>
-    </div>
+        <div
+          className={`sidebar-footer ${cerrando ? "disabled" : ""}`}
+          onClick={handleLogout}
+          title={cerrando ? "Cerrando sesión..." : "Cerrar sesión"}
+        >
+          <span className="icon logout-icon">
+            <FaSignOutAlt />
+          </span>
+          <span className="text logout-text">{cerrando ? "Cerrando..." : "Cerrar sesión"}</span>
+        </div>
+      </aside>
+    </>
   );
 };
 

@@ -1,0 +1,332 @@
+.content-historial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;    
+}
+.content-historial .titulo-seccion {
+  width: 100%;
+  text-align: center;
+  margin: 20px 0 10px 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+.cards-grid-hi {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+.card {
+  padding: 20px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+}
+.card-icon {
+  font-size: 50px;
+  color: #0056a6;
+  margin-bottom: 10px;
+}
+.card h2 {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #0056a6;
+}
+
+.card p {
+  font-size: 14px;
+  color: #555;
+  margin: 2px 0;
+}
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+@keyframes modalFade {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================
+   🔹 MODAL TABLA
+========================== */
+.modal-tabla {
+  background: #fff;
+  width: 92%;
+  max-width: 1150px;
+  max-height: 82vh;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  animation: modalFade 0.25s ease-out;
+  position: relative;
+}
+
+/* ==========================
+   🔹 HEADER MODAL
+========================== */
+.modal-header {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 10px;
+}
+
+.modal-title {
+  font-size: 26px;
+  font-weight: bold;
+  color: #0056a6;
+  margin: 0;
+}
+
+/* BOTÓN CERRAR (opcional) */
+.btn-cerrar {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  color: #333;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-cerrar:hover {
+  color: red;
+}
+
+/* ==========================
+   🔹 CUERPO DEL MODAL
+========================== */
+.modal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: 5px;
+}
+
+/* ==========================
+   🔹 TABLA
+========================== */
+.tabla-scroll {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+
+.tabla-elegante {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-elegante thead {
+  background-color: #003366;
+  color: #fff;
+}
+
+.tabla-elegante th,
+.tabla-elegante td {
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+}
+
+.tabla-elegante tr:nth-child(even) {
+  background-color: #f1f5ff;
+}
+
+.tabla-elegante tr:hover {
+  background: #e7f0ff;
+}
+
+/* ==========================
+   🔹 SPINNER LOADING
+========================== */
+.tabla-cargando {
+  padding: 25px 0;
+  text-align: center;
+  color: #003366;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.spinner {
+  width: 45px;
+  height: 45px;
+  margin: 0 auto 12px;
+  border: 5px solid #ccc;
+  border-top: 5px solid #0056a6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+
+/* ==========================
+   🔹 BARRA DE FILTROS
+========================== */
+.filtro-bar {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+/* 👉 En escritorio: todo en una sola línea */
+.filtro-bar-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: nowrap;
+}
+
+/* el buscador ocupa todo el espacio posible */
+.filtro-busqueda-flex {
+  flex: 1;
+}
+
+/* Input búsqueda */
+.busqueda-contenedor-hi {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+}
+
+.icono-busqueda-hi {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: #555;
+  pointer-events: none;
+}
+
+.input-busqueda-hi {
+  width: 100%;
+  max-width: 320px;
+  padding: 10px 12px 10px 40px; /* espacio para icono */
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input-busqueda-hi:focus {
+  border-color: #0056a6;
+  box-shadow: 0 0 6px rgba(0, 86, 166, 0.4);
+}
+
+/* Filtros de fecha */
+.filtro-fecha label {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.filtro-fecha input {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+/* Select filtros */
+.select-filtro-hi {
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  background: white;
+  flex-shrink: 0;
+  min-width: 160px;
+}
+
+/* Botón exportar dentro de la barra */
+.btn-excel-exportar,
+.btn-excel-inline {
+  background-color: #28a745;
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  min-width: 140px;
+  width: auto;
+  white-space: nowrap;
+}
+
+.btn-excel-exportar:hover,
+.btn-excel-inline:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+/* ==========================
+   🔹 RESPONSIVE
+========================== */
+@media (max-width: 900px) {
+  .filtro-bar-inline {
+    flex-wrap: wrap;               /* aquí sí dejamos que baje a 2 líneas */
+  }
+
+  .busqueda-contenedor-hi {
+    width: 100%;
+  }
+
+  .select-filtro-hi {
+    width: 100%;
+  }
+
+  .btn-excel-exportar,
+  .btn-excel-inline {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-tabla {
+    padding: 15px;
+  }
+
+  .tabla-elegante th,
+  .tabla-elegante td {
+    font-size: 12px;
+  }
+}
+.page-ellipsis {
+  padding: 0 6px;
+  font-size: 14px;
+  color: #555;
+}

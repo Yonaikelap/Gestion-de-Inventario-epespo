@@ -1,0 +1,3086 @@
+// File: Actas.jsx
+import React, { useEffect, useState } from "react";
+import Sidebar from "./Sidebar";
+import Navbar from "./Navbar";
+import axiosClient from "../api/axiosClient";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { FaSearch, FaFileWord, FaFilePdf } from "react-icons/fa";
+import "../styles/Actas.css";
+
+const Actas = () => {
+  const [actas, setActas] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroResponsable, setFiltroResponsable] = useState("");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [cargando, setCargando] = useState(false);
+
+  // 👉 paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const itemsPorPagina = 5;
+  const maxBotonesPagina = 5;
+
+  useEffect(() => {
+    fetchActas();
+  }, []);
+
+  const fetchActas = async () => {
+    try {
+      setCargando(true);
+      const { data } = await axiosClient.get("/actas");
+      setActas(data);
+    } catch (error) {
+      toast.error("Error al cargar actas");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // 👉 resetear página cuando cambian filtros o lista
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroResponsable, fechaDesde, fechaHasta, actas]);
+
+  // 👉 descarga Word / PDF
+  const descargarActa = async (id, codigo, tipo = "word") => {
+    const extension = tipo === "pdf" ? "pdf" : "docx";
+    const endpoint =
+      tipo === "pdf"
+        ? `/actas/${id}/descargar-pdf`
+        : `/actas/${id}/descargar-word`;
+
+    try {
+      const response = await axiosClient.get(endpoint, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${codigo || "ACTA"}-${id}.${extension}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      toast.success(
+        tipo === "pdf"
+          ? "PDF descargado correctamente "
+          : "Documento Word descargado correctamente "
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        tipo === "pdf"
+          ? "No se pudo descargar el PDF "
+          : "No se pudo descargar el documento Word "
+      );
+    }
+  };
+
+  // responsables únicos (tomamos el responsable de la primera asignación de cada acta)
+  const responsablesUnicos = [
+    ...new Set(
+      actas
+        .map((a) =>
+          a.asignaciones && a.asignaciones.length > 0
+            ? a.asignaciones[0].responsable?.nombre
+            : null
+        )
+        .filter((x) => x && x !== "")
+    ),
+  ];
+
+  // ============= FILTROS =============
+  const actasFiltradas = actas.filter((a) => {
+    const texto = busqueda.toLowerCase();
+
+    const primeraAsignacion =
+      a.asignaciones && a.asignaciones.length > 0 ? a.asignaciones[0] : null;
+
+    const responsable =
+      primeraAsignacion?.responsable?.nombre?.toLowerCase() || "";
+    const fecha = a.fecha_creacion || "";
+    const codigo = a.codigo?.toLowerCase() || "";
+
+    const coincideTexto =
+      responsable.includes(texto) ||
+      fecha.toLowerCase().includes(texto) ||
+      codigo.includes(texto);
+
+    const coincideResponsable = filtroResponsable
+      ? primeraAsignacion?.responsable?.nombre === filtroResponsable
+      : true;
+
+    let coincideFechas = true;
+    if (fechaDesde && fecha < fechaDesde) coincideFechas = false;
+    if (fechaHasta && fecha > fechaHasta) coincideFechas = false;
+
+    return coincideTexto && coincideResponsable && coincideFechas;
+  });
+
+  // ============= PAGINACIÓN (5 en 5) =============
+  const totalActas = actasFiltradas.length;
+  const totalPaginas =
+    totalActas === 0 ? 1 : Math.ceil(totalActas / itemsPorPagina);
+
+  const paginaSegura =
+    paginaActual > totalPaginas ? totalPaginas : paginaActual;
+
+  const indiceInicio = (paginaSegura - 1) * itemsPorPagina;
+  const indiceFin = indiceInicio + itemsPorPagina;
+  const actasPaginadas = actasFiltradas.slice(indiceInicio, indiceFin);
+
+  // ventana de botones (máx 5)
+  const grupoActual = Math.floor((paginaSegura - 1) / maxBotonesPagina); // 0,1,2...
+  const paginaInicioGrupo = grupoActual * maxBotonesPagina + 1;
+  const paginaFinGrupo = Math.min(
+    paginaInicioGrupo + maxBotonesPagina - 1,
+    totalPaginas
+  );
+
+  const paginasAmostrar = [];
+  for (let p = paginaInicioGrupo; p <= paginaFinGrupo; p++) {
+    paginasAmostrar.push(p);
+  }
+
+  // info "Mostrando X de Y actas"
+  const primerItem = totalActas === 0 ? 0 : indiceInicio + 1;
+  const ultimoItem = totalActas === 0 ? 0 : Math.min(indiceFin, totalActas);
+
+  // ===================================
+
+  return (
+    <div className="dashboard-container">
+      <Sidebar />
+      <div className="main-content">
+        <Navbar />
+        <div className="content">
+          <div className="actas-wrapper">
+            {/* título */}
+            <div className="titulo-actas">
+              <h2>
+                Actas generadas
+              </h2>
+            </div>
+
+            <div className="actas-card">
+              {/* filtros */}
+              <div className="filtros-actas">
+                <div className="filtro-item">
+                  <span className="icono-busqueda">
+                    <FaSearch />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Buscar por responsable, fecha o código..."
+                    value={busqueda}
+                    onChange={(e) => setBusqueda(e.target.value)}
+                    className="input-busqueda-actas"
+                  />
+                </div>
+
+                <div className="filtro-item">
+                  <select
+                    value={filtroResponsable}
+                    onChange={(e) => setFiltroResponsable(e.target.value)}
+                    className="select-filtro-actas"
+                  >
+                    <option value="">Filtrar por responsable...</option>
+                    {responsablesUnicos.map((r, i) => (
+                      <option key={i} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="filtro-item">
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    className="select-filtro-actas"
+                    title="Desde"
+                  />
+                </div>
+
+                <div className="filtro-item">
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    className="select-filtro-actas"
+                    title="Hasta"
+                  />
+                </div>
+              </div>
+
+              {/* tabla */}
+              <div className="tabla-scroll" style={{ marginTop: "15px" }}>
+                <table className="tabla-elegante">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Código</th>
+                      <th>Responsable</th>
+                      <th className="th-productos">Productos</th>
+                      <th>Documentos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cargando ? (
+                      <tr>
+                        <td colSpan="5">Cargando actas...</td>
+                      </tr>
+                    ) : actasPaginadas.length > 0 ? (
+                      actasPaginadas.map((acta) => {
+                        const primeraAsignacion =
+                          acta.asignaciones && acta.asignaciones.length > 0
+                            ? acta.asignaciones[0]
+                            : null;
+
+                        return (
+                          <tr key={acta.id}>
+                            <td>{acta.fecha_creacion}</td>
+                            <td>{acta.codigo}</td>
+                            <td>
+                              {primeraAsignacion?.responsable
+                                ? `${primeraAsignacion.responsable.nombre} ${
+                                    primeraAsignacion.responsable.apellido ||
+                                    ""
+                                  }`
+                                : "—"}
+                            </td>
+                            <td className="col-productos">
+                              {acta.asignaciones &&
+                              acta.asignaciones.length > 0 ? (
+                                acta.asignaciones.map((asig) =>
+                                  asig.productos && asig.productos.length > 0 ? (
+                                    asig.productos.map((p) => (
+                                      <div
+                                        key={`${asig.id}-${p.id}`}
+                                        className="producto-mini-row"
+                                      >
+                                        {p.codigo ? `${p.codigo} - ` : ""}
+                                        {p.nombre || ""}
+                                      </div>
+                                    ))
+                                  ) : null
+                                )
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td>
+                              {/* Word */}
+                              <button
+                                className="btn-accion"
+                                onClick={() =>
+                                  descargarActa(acta.id, acta.codigo, "word")
+                                }
+                                title="Descargar en Word"
+                              >
+                                <FaFileWord />
+                              </button>
+
+                              {/* PDF solo si existe en la BD */}
+                              {acta.archivo_pdf_path && (
+                                <button
+                                  className="btn-accion"
+                                  style={{ marginLeft: "6px" }}
+                                  onClick={() =>
+                                    descargarActa(acta.id, acta.codigo, "pdf")
+                                  }
+                                  title="Descargar en PDF"
+                                >
+                                  <FaFilePdf />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan="5">No hay actas registradas</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* paginación */}
+              {!cargando && totalActas > 0 && (
+                <div className="pagination-bar">
+                  <span className="pagination-info">
+                    Mostrando {primerItem} a {ultimoItem} de {totalActas} actas
+                  </span>
+
+                  <div className="pagination-circle">
+                    <button
+                      className="page-btn"
+                      onClick={() => setPaginaActual(1)}
+                      disabled={paginaSegura === 1}
+                    >
+                      «
+                    </button>
+                    <button
+                      className="page-btn"
+                      onClick={() =>
+                        setPaginaActual(
+                          paginaSegura > 1 ? paginaSegura - 1 : 1
+                        )
+                      }
+                      disabled={paginaSegura === 1}
+                    >
+                      ‹
+                    </button>
+
+                    {paginasAmostrar.map((p) => (
+                      <button
+                        key={p}
+                        className={`page-btn ${
+                          p === paginaSegura ? "active" : ""
+                        }`}
+                        onClick={() => setPaginaActual(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      className="page-btn"
+                      onClick={() =>
+                        setPaginaActual(
+                          paginaSegura < totalPaginas
+                            ? paginaSegura + 1
+                            : totalPaginas
+                        )
+                      }
+                      disabled={paginaSegura === totalPaginas}
+                    >
+                      ›
+                    </button>
+                    <button
+                      className="page-btn"
+                      onClick={() => setPaginaActual(totalPaginas)}
+                      disabled={paginaSegura === totalPaginas}
+                    >
+                      »
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar
+        closeButton={false}
+      />
+    </div>
+  );
+};
+
+export default Actas;
+
+
+// File: Asignacion.jsx
+import React, { useState, useEffect, useRef } from "react";
+import "../styles/Asignacion.css";
+import Sidebar from "./Sidebar";
+import Navbar from "./Navbar";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import {
+  FaUsers,
+  FaBoxOpen,
+  FaUser,
+  FaBriefcase,
+  FaInfoCircle,
+  FaCalendarAlt,
+  FaClipboardList,
+  FaEdit,
+  FaTrash,
+  FaSearch,
+} from "react-icons/fa";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Swal from "sweetalert2";
+import axiosClient from "../api/axiosClient";
+import { validarAsignacion } from "../Validaciones/validacionesAsignacion";
+import { useNotificaciones } from "../context/NotificacionesContext";
+import { esAdmin, esLector } from "../utils/permisos";
+
+const fechaHoy = () => {
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dd = String(hoy.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const Asignacion = () => {
+  // ==========================
+  // 🔹 ESTADOS PRINCIPALES
+  // ==========================
+  const [asignacion, setAsignacion] = useState({
+    responsable_id: "",
+    fecha_asignacion: fechaHoy(),
+    area_id: "",
+  });
+
+  // 🆕 Estado para Recepción
+  const [recepcion, setRecepcion] = useState({
+    responsable_id: "",
+    fecha_devolucion: fechaHoy(),
+    area_id: "",
+  });
+
+  const [asignaciones, setAsignaciones] = useState([]);
+  const [recepciones, setRecepciones] = useState([]);
+
+  const [responsables, setResponsables] = useState([]);
+  const [productos, setProductos] = useState({});
+  const [bienesSeleccionados, setBienesSeleccionados] = useState({});
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
+  const [productoDetalle, setProductoDetalle] = useState(null);
+
+  const [mostrarModalFormulario, setMostrarModalFormulario] = useState(false);
+  const [mostrarModalTabla, setMostrarModalTabla] = useState(false);
+  const [mostrarModalTablaRecep, setMostrarModalTablaRecep] = useState(false);
+  const [mostrarSubModal, setMostrarSubModal] = useState(false);
+  const [mostrarDetalles, setMostrarDetalles] = useState(false);
+  const [mostrarModalRecepcion, setMostrarModalRecepcion] = useState(false);
+
+  const [editId, setEditId] = useState(null); // asignación
+  const [editRecepcionId, setEditRecepcionId] = useState(null); // recepción
+
+  const [cargando, setCargando] = useState(false); // para tablas
+  const [guardando, setGuardando] = useState(false); // botón Guardar asignación
+
+  // paginación tabla asignaciones
+  const [busqueda, setBusqueda] = useState("");
+  const [paginaAsignacionesActual, setPaginaAsignacionesActual] = useState(1);
+  const asignacionesPorPagina = 5;
+
+  // paginación tabla recepciones
+  const [busquedaRecep, setBusquedaRecep] = useState("");
+  const [paginaRecepcionesActual, setPaginaRecepcionesActual] = useState(1);
+  const recepcionesPorPagina = 5;
+
+  // paginación submodal productos
+  const [paginaProductosActual, setPaginaProductosActual] = useState(1);
+  const productosPorPagina = 5;
+
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [filtroResponsable, setFiltroResponsable] = useState("");
+
+  const [filtroCategoriaRecep, setFiltroCategoriaRecep] = useState("");
+  const [filtroResponsableRecep, setFiltroResponsableRecep] = useState("");
+
+  const [areas, setAreas] = useState([]);
+  const ultimaAsignacionIdRef = useRef(null);
+
+  const [errores, setErrores] = useState({});
+  const { agregarNotificacion } = useNotificaciones();
+
+  const admin = esAdmin();
+  const lector = esLector();
+
+  // ==============================
+  // 🔹 CARGA INICIAL
+  // ==============================
+  useEffect(() => {
+    fetchResponsables();
+    fetchProductos();
+    fetchAsignaciones();
+    fetchAreas();
+    fetchRecepciones();
+    // Las recepciones las puedes cargar solo al abrir el modal o aquí.
+    // fetchRecepciones();
+  }, []);
+
+  const fetchAreas = async () => {
+    try {
+      const { data } = await axiosClient.get("/departamentos");
+      setAreas(data);
+    } catch (error) {
+      toast.error("Error al cargar departamentos ");
+    }
+  };
+
+  const fetchResponsables = async () => {
+    try {
+      const { data } = await axiosClient.get("/responsables");
+      setResponsables(data);
+    } catch (error) {
+      toast.error("Error al cargar responsables ");
+    }
+  };
+
+  const fetchProductos = async () => {
+    try {
+      const { data } = await axiosClient.get("/productos");
+      const agrupados = {};
+      data.forEach((p) => {
+        if (!agrupados[p.categoria]) agrupados[p.categoria] = [];
+        agrupados[p.categoria].push(p);
+      });
+      setProductos(agrupados);
+    } catch (error) {
+      toast.error("Error al cargar productos ");
+    }
+  };
+
+  const fetchAsignaciones = async () => {
+    try {
+      setCargando(true);
+      const { data } = await axiosClient.get("/asignaciones");
+      setAsignaciones(data);
+      setPaginaAsignacionesActual(1);
+    } catch (error) {
+      toast.error("Error al cargar asignaciones");
+    } finally {
+      setTimeout(() => setCargando(false), 600);
+    }
+  };
+
+  const fetchRecepciones = async () => {
+    try {
+      setCargando(true);
+      const { data } = await axiosClient.get("/recepciones");
+      setRecepciones(data);
+      setPaginaRecepcionesActual(1);
+    } catch (error) {
+      toast.error("Error al cargar recepciones");
+    } finally {
+      setTimeout(() => setCargando(false), 600);
+    }
+  };
+
+  // Cuando cambian filtros / búsqueda de asignaciones, volvemos a página 1
+  useEffect(() => {
+    setPaginaAsignacionesActual(1);
+  }, [busqueda, filtroCategoria, filtroResponsable]);
+
+  // Cuando cambian filtros / búsqueda de recepciones, volvemos a página 1
+  useEffect(() => {
+    setPaginaRecepcionesActual(1);
+  }, [busquedaRecep, filtroCategoriaRecep, filtroResponsableRecep]);
+
+  // ==============================
+  // 🔹 SUBMIT ASIGNACIÓN
+  // ==============================
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // 🔒 Bloqueo para lector
+    if (lector) {
+      toast.info("Solo lectura: no puedes crear ni editar asignaciones ");
+      return;
+    }
+
+    setErrores({});
+
+    const erroresVal = validarAsignacion(
+      asignacion,
+      bienesSeleccionados,
+      asignaciones,
+      editId
+    );
+
+    if (Object.keys(erroresVal).length > 0) {
+      setErrores(erroresVal);
+      return;
+    }
+
+    const toastId = toast.loading("Guardando asignaciones... ");
+    setGuardando(true);
+
+    try {
+      const categoriasSeleccionadas = Object.keys(bienesSeleccionados).filter(
+        (cat) => (bienesSeleccionados[cat] || []).length > 0
+      );
+
+      for (const categoria of categoriasSeleccionadas) {
+        const productosCategoria = bienesSeleccionados[categoria] || [];
+        if (productosCategoria.length === 0) continue;
+
+        const productosIds = productosCategoria.map((p) => p.id);
+
+        const payload = {
+          responsable_id: asignacion.responsable_id,
+          area_id: asignacion.area_id,
+          fecha_asignacion: asignacion.fecha_asignacion,
+          categoria: categoria,
+          productos: productosIds,
+        };
+
+        let resp;
+        if (editId) {
+          resp = await axiosClient.put(`/asignaciones/${editId}`, payload);
+        } else {
+          resp = await axiosClient.post("/asignaciones", payload);
+        }
+
+        ultimaAsignacionIdRef.current = resp.data.id;
+      }
+
+      await fetchAsignaciones();
+
+      // Datos para la notificación
+      const respSel = responsables.find(
+        (r) =>
+          r.id === asignacion.responsable_id ||
+          r.id === Number(asignacion.responsable_id)
+      );
+      const nombreResponsable = respSel
+        ? `${respSel.nombre} ${respSel.apellido}`
+        : "Responsable no encontrado";
+
+      const totalProductos = Object.keys(bienesSeleccionados).reduce(
+        (acc, cat) => acc + (bienesSeleccionados[cat]?.length || 0),
+        0
+      );
+
+      // Reset form
+      setMostrarModalFormulario(false);
+      setEditId(null);
+      setAsignacion({
+        responsable_id: "",
+        fecha_asignacion: fechaHoy(),
+        area_id: "",
+      });
+      setBienesSeleccionados({});
+      setErrores({});
+
+      toast.update(toastId, {
+        render: "Asignaciones registradas correctamente ",
+        type: "success",
+        isLoading: false,
+        autoClose: 2500,
+      });
+
+      // 🔔 Notificación al Navbar
+      agregarNotificacion({
+        titulo: editId ? "Asignación editada" : "Nueva asignación",
+        mensaje: `Responsable: ${nombreResponsable} | Productos: ${totalProductos}`,
+        fecha: new Date().toISOString(),
+      });
+
+      // Generar acta
+      Swal.fire({
+        title: "Generar Acta",
+        text: "Se ha generado el Acta de las asignaciones correspondientes, podrás editarla para ajustar los campos.",
+        icon: "warning",
+        confirmButtonText: "Aceptar",
+        confirmButtonColor: "#635BFF",
+        showCancelButton: false,
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          try {
+            if (ultimaAsignacionIdRef.current) {
+              await axiosClient.post("/actas/generar", {
+                asignacion_id: ultimaAsignacionIdRef.current,
+              });
+              toast.success("Acta generada correctamente ");
+            } else {
+              toast.warning(
+                "No se encontró la asignación para generar el acta "
+              );
+            }
+          } catch (err) {
+            console.error(err);
+            toast.error(
+              "La asignación se guardó, pero no se pudo generar el acta "
+            );
+          }
+        }
+      });
+    } catch (error) {
+      console.error(error.response?.data || error.message);
+      toast.update(toastId, {
+        render: "Error al guardar las asignaciones ",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  // ==============================
+  // 🆕 SUBMIT RECEPCIÓN (crear / editar)
+  // ==============================
+  const handleSubmitRecepcion = async (e) => {
+  e.preventDefault();
+
+  // 🔒 Bloqueo para lector
+  if (lector) {
+    toast.info("Solo lectura: no puedes crear actas de recepción ");
+    return;
+  }
+
+  if (
+    !recepcion.responsable_id ||
+    !recepcion.fecha_devolucion ||
+    !recepcion.area_id
+  ) {
+    toast.warning(
+      "Completa Responsable, Fecha de Devolución y Departamento."
+    );
+    return;
+  }
+
+  const categoriasSeleccionadas = Object.keys(bienesSeleccionados).filter(
+    (cat) => (bienesSeleccionados[cat] || []).length > 0
+  );
+
+  if (categoriasSeleccionadas.length === 0) {
+    toast.warning("Selecciona al menos un bien para la recepción.");
+    return;
+  }
+
+  // =========================================
+  // 🔍 VALIDACIONES LÓGICAS DE RECEPCIÓN
+  // =========================================
+
+  // 1) Conjunto de bienes ASIGNADOS a cada responsable
+  const combosAsignados = new Set();
+  asignaciones.forEach((a) => {
+    (a.productos || []).forEach((p) => {
+      combosAsignados.add(`${a.responsable_id}-${p.id}`);
+    });
+  });
+
+  // 2) Conjunto de bienes YA RECIBIDOS para cada responsable
+  //    (ignorando la recepción actual si estamos en edición)
+  const combosYaRecibidos = new Set();
+  recepciones.forEach((r) => {
+    if (editRecepcionId && r.id === editRecepcionId) return;
+    (r.productos || []).forEach((p) => {
+      combosYaRecibidos.add(`${r.responsable_id}-${p.id}`);
+    });
+  });
+
+  const noAsignados = [];
+  const yaRecibidos = [];
+
+  for (const categoria of categoriasSeleccionadas) {
+    const productosCategoria = bienesSeleccionados[categoria] || [];
+    for (const p of productosCategoria) {
+      const key = `${recepcion.responsable_id}-${p.id}`;
+
+      if (!combosAsignados.has(key)) {
+        // Bien que no está asignado a ese responsable
+        noAsignados.push(`${p.codigo} - ${p.nombre}`);
+      } else if (combosYaRecibidos.has(key)) {
+        // Bien que ya tiene una recepción registrada con ese responsable
+        yaRecibidos.push(`${p.codigo} - ${p.nombre}`);
+      }
+    }
+  }
+
+  if (noAsignados.length > 0) {
+    toast.warning(
+      `Los siguientes bienes no están asignados a este responsable, por lo que no puedes adjudicarlos: ${noAsignados.join(
+        ", "
+      )}`
+    );
+    return;
+  }
+
+  if (yaRecibidos.length > 0) {
+    toast.error(
+      `Ya existe una recepción registrada para este responsable y los bienes: ${yaRecibidos.join(
+        ", "
+      )}. Si deseas registrar otra vez, elimina primero la recepción anterior.`
+    );
+    return;
+  }
+
+  // =========================================
+  // ✅ Si pasa las validaciones, guardamos
+  // =========================================
+
+  const toastId = toast.loading(
+    editRecepcionId ? "Actualizando recepción... " : "Guardando recepción... "
+  );
+
+  try {
+    for (const categoria of categoriasSeleccionadas) {
+      const productosCategoria = bienesSeleccionados[categoria] || [];
+      if (productosCategoria.length === 0) continue;
+
+      const productosIds = productosCategoria.map((p) => p.id);
+
+      const payload = {
+        responsable_id: recepcion.responsable_id,
+        area_id: recepcion.area_id,
+        fecha_devolucion: recepcion.fecha_devolucion,
+        categoria,
+        productos: productosIds,
+      };
+
+      if (editRecepcionId) {
+        await axiosClient.put(`/recepciones/${editRecepcionId}`, payload);
+      } else {
+        await axiosClient.post("/recepciones", payload);
+      }
+    }
+
+    await fetchRecepciones();
+
+    toast.update(toastId, {
+      render: "Recepción registrada correctamente ",
+      type: "success",
+      isLoading: false,
+      autoClose: 2500,
+    });
+
+    // Resetear formulario de recepción
+    setMostrarModalRecepcion(false);
+    setRecepcion({
+      responsable_id: "",
+      fecha_devolucion: fechaHoy(),
+      area_id: "",
+    });
+    setBienesSeleccionados({});
+    setEditRecepcionId(null);
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+    toast.update(toastId, {
+      render: "Error al guardar recepción ",
+      type: "error",
+      isLoading: false,
+      autoClose: 3000,
+    });
+  }
+};
+// -----------------------------------------------------------------------------------------
+  // ==============================
+  // 🔹 ELIMINAR / EDITAR ASIGNACIÓN
+  // ==============================
+  const eliminarAsignacion = async (id) => {
+    if (lector) {
+      toast.info("Solo lectura: no puedes eliminar asignaciones ");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "¿Eliminar asignación?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const toastId = toast.loading("Eliminando asignación... ");
+
+    try {
+      await axiosClient.delete(`/asignaciones/${id}`);
+      await fetchAsignaciones();
+
+      toast.update(toastId, {
+        render: "Asignación eliminada correctamente ",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+
+      // 🔔 Notificación al Navbar
+      agregarNotificacion({
+        titulo: "Asignación eliminada",
+        mensaje: "Se eliminó una asignación del sistema",
+        fecha: new Date().toISOString(),
+      });
+    } catch {
+      toast.update(toastId, {
+        render: "Error al eliminar la asignación ",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+  };
+
+  const editarAsignacion = (item) => {
+    if (lector) {
+      toast.info("Solo lectura: no puedes editar asignaciones ");
+      return;
+    }
+
+    setAsignacion({
+      responsable_id: item.responsable_id,
+      fecha_asignacion: item.fecha_asignacion,
+      area_id: item.area_id,
+    });
+    setEditId(item.id);
+
+    const agrupados = {};
+    item.productos.forEach((p) => {
+      if (!agrupados[p.categoria]) agrupados[p.categoria] = [];
+      agrupados[p.categoria].push(p);
+    });
+    setBienesSeleccionados(agrupados);
+    setErrores({});
+
+    setMostrarModalFormulario(true);
+    setMostrarModalTabla(false);
+  };
+
+  // ==============================
+  // 🔹 ELIMINAR / EDITAR RECEPCIÓN
+  // ==============================
+  const eliminarRecepcion = async (id) => {
+    if (lector) {
+      toast.info("Solo lectura: no puedes eliminar recepciones ");
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "¿Eliminar recepción?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const toastId = toast.loading("Eliminando recepción... ");
+
+    try {
+      await axiosClient.delete(`/recepciones/${id}`);
+      await fetchRecepciones();
+
+      toast.update(toastId, {
+        render: "Recepción eliminada correctamente ",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+    } catch {
+      toast.update(toastId, {
+        render: "Error al eliminar la recepción ",
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+  };
+
+  const editarRecepcion = (item) => {
+    if (lector) {
+      toast.info("Solo lectura: no puedes editar recepciones ");
+      return;
+    }
+
+    setRecepcion({
+      responsable_id: item.responsable_id,
+      fecha_devolucion: item.fecha_devolucion
+        ? item.fecha_devolucion.slice(0, 10)
+        : fechaHoy(),
+      area_id: item.area_id,
+    });
+    setEditRecepcionId(item.id);
+
+    const agrupados = {};
+    (item.productos || []).forEach((p) => {
+      if (!agrupados[p.categoria]) agrupados[p.categoria] = [];
+      agrupados[p.categoria].push(p);
+    });
+    setBienesSeleccionados(agrupados);
+
+    setMostrarModalRecepcion(true);
+    setMostrarModalTablaRecep(false);
+  };
+
+  // ==============================
+  // 🔹 FILTROS Y PAGINACIÓN ASIGNACIONES
+  // ==============================
+  const asignacionesFiltradas = asignaciones.filter((a) => {
+    const texto = busqueda.toLowerCase();
+
+    const nombreResponsable = (a.responsable?.nombre || "").toLowerCase();
+    const coincideTexto =
+      nombreResponsable.includes(texto) ||
+      a.productos.some((p) => (p.nombre || "").toLowerCase().includes(texto));
+
+    const coincideCategoria = filtroCategoria
+      ? a.productos.some((p) => p.categoria === filtroCategoria)
+      : true;
+
+    const coincideResponsable = filtroResponsable
+      ? (a.responsable?.nombre || "") === filtroResponsable
+      : true;
+
+    return coincideTexto && coincideCategoria && coincideResponsable;
+  });
+
+  const indiceUltimoAsign = paginaAsignacionesActual * asignacionesPorPagina;
+  const indicePrimeroAsign = indiceUltimoAsign - asignacionesPorPagina;
+  const paginaAsignaciones = asignacionesFiltradas.slice(
+    indicePrimeroAsign,
+    indiceUltimoAsign
+  );
+  const totalPaginasAsign = Math.ceil(
+    asignacionesFiltradas.length / asignacionesPorPagina
+  );
+  const paginasAsign =
+    totalPaginasAsign > 0
+      ? Array.from({ length: totalPaginasAsign }, (_, i) => i + 1)
+      : [];
+
+  // ==============================
+  // 🔹 FILTROS Y PAGINACIÓN RECEPCIONES
+  // ==============================
+  const recepcionesFiltradas = recepciones.filter((r) => {
+    const texto = busquedaRecep.toLowerCase();
+
+    const nombreResponsable = (r.responsable?.nombre || "").toLowerCase();
+    const coincideTexto =
+      nombreResponsable.includes(texto) ||
+      r.productos?.some((p) =>
+        (p.nombre || "").toLowerCase().includes(texto)
+      );
+
+    const coincideCategoria = filtroCategoriaRecep
+      ? r.productos?.some((p) => p.categoria === filtroCategoriaRecep)
+      : true;
+
+    const coincideResponsable = filtroResponsableRecep
+      ? (r.responsable?.nombre || "") === filtroResponsableRecep
+      : true;
+
+    return coincideTexto && coincideCategoria && coincideResponsable;
+  });
+
+  const indiceUltimaRecep = paginaRecepcionesActual * recepcionesPorPagina;
+  const indicePrimeraRecep = indiceUltimaRecep - recepcionesPorPagina;
+  const paginaRecepciones = recepcionesFiltradas.slice(
+    indicePrimeraRecep,
+    indiceUltimaRecep
+  );
+  const totalPaginasRecep = Math.ceil(
+    recepcionesFiltradas.length / recepcionesPorPagina
+  );
+  const paginasRecep =
+    totalPaginasRecep > 0
+      ? Array.from({ length: totalPaginasRecep }, (_, i) => i + 1)
+      : [];
+
+  // ==============================
+  // 🔹 EXPORTAR EXCEL ASIGNACIONES
+  // ==============================
+  const exportarExcelAsignaciones = () => {
+    if (asignacionesFiltradas.length === 0) {
+      toast.info("No hay datos para exportar ");
+      return;
+    }
+
+    const datosExport = asignacionesFiltradas.map((a) => ({
+      Responsable: a.responsable?.nombre,
+      Fecha: a.fecha_asignacion,
+      Categorías: [...new Set(a.productos.map((p) => p.categoria))].join(", "),
+      Productos: a.productos
+        .map((p) => `${p.codigo} - ${p.nombre}`)
+        .join("; "),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(datosExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Asignaciones");
+    const buffer = XLSX.write(wb, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const blob = new Blob([buffer], {
+      type: "application/octet-stream",
+    });
+    saveAs(blob, "asignaciones.xlsx");
+    toast.success("Archivo Excel exportado correctamente ");
+  };
+
+  // ==============================
+  // 🔹 RENDER
+  // ==============================
+  return (
+    <div className="dashboard-container">
+      <Sidebar />
+      <div className="main-content">
+        <Navbar />
+        <div className="content">
+          <div className="cards-grid-asig">
+            {/* Solo admin puede asignar y adjudicar bienes */}
+            {admin && (
+              <>
+                <div
+                  className="card clickable"
+                  onClick={() => {
+                    setAsignacion({
+                      responsable_id: "",
+                      fecha_asignacion: fechaHoy(),
+                      area_id: "",
+                    });
+                    setBienesSeleccionados({});
+                    setEditId(null);
+                    setErrores({});
+                    setMostrarModalFormulario(true);
+                  }}
+                >
+                  <FaUsers className="card-icon" />
+                  <h2 className="card-title">Asignar Responsable</h2>
+                  <p className="card-subtitle">
+                    Asignar productos a un responsable
+                  </p>
+                </div>
+
+                {/* Tarjeta Nueva adjudicación (Recepción) */}
+                <div
+                  className="card clickable"
+                  onClick={() => {
+                    setRecepcion({
+                      responsable_id: "",
+                      fecha_devolucion: fechaHoy(),
+                      area_id: "",
+                    });
+                    setBienesSeleccionados({});
+                    setErrores({});
+                    setEditRecepcionId(null);
+                    setMostrarModalRecepcion(true);
+                  }}
+                >
+                  <FaClipboardList className="card-icon" />
+                  <h2 className="card-title">Adjudicar Bienes</h2>
+                  <p className="card-subtitle">
+                    Adjudicar bienes a un responsable
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Todos pueden ver asignaciones */}
+            <div
+              className="card clickable"
+              onClick={async () => {
+                setCargando(true);
+                setMostrarModalTabla(true);
+                await fetchAsignaciones();
+                setTimeout(() => setCargando(false), 700);
+              }}
+            >
+              <FaBoxOpen className="card-icon" />
+              <h2 className="card-title">Asignaciones</h2>
+              <p className="card-subtitle">Ver todas las asignaciones</p>
+            </div>
+
+            {/* 🆕 Todos pueden ver recepciones */}
+            <div
+              className="card clickable"
+              onClick={async () => {
+                setCargando(true);
+                setMostrarModalTablaRecep(true);
+                await fetchRecepciones();
+                setTimeout(() => setCargando(false), 700);
+              }}
+            >
+              <FaClipboardList className="card-icon" />
+              <h2 className="card-title">Recepciones</h2>
+              <p className="card-subtitle">Ver todas las recepciones hechas</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 🟢 Modal formulario Asignación */}
+      {mostrarModalFormulario && (
+        <div
+          className="modal-overlay-asi"
+          onClick={() => {
+            setMostrarModalFormulario(false);
+            setErrores({});
+          }}
+        >
+          <div
+            className="modal-form-asi"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="modal-title-asi">
+              {editId ? "Editar Asignación" : "Nueva Asignación"}
+            </h2>
+
+            {errores.general && (
+              <p className="mensaje-error-general">{errores.general}</p>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              {/* 🔒 Deshabilitar todo el formulario para lector */}
+              <fieldset disabled={lector}>
+                {/* RESPONSABLE */}
+                <div className="form-group-asi">
+                  <label>Responsable</label>
+                  <div
+                    className={`input-icon-asi ${
+                      errores.responsable_id ? "input-error" : ""
+                    }`}
+                  >
+                    <FaUser className="icon-input-asi" />
+                    <select
+                      name="responsable_id"
+                      className="select-responsable-scroll"
+                      value={asignacion.responsable_id}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setAsignacion((prev) => ({
+                          ...prev,
+                          responsable_id: value,
+                        }));
+                        if (errores.responsable_id) {
+                          setErrores((prev) => ({
+                            ...prev,
+                            responsable_id: undefined,
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">
+                        -- Seleccione un responsable --
+                      </option>
+                      {responsables.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre} {r.apellido}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {errores.responsable_id && (
+                    <span className="mensaje-error">
+                      {errores.responsable_id}
+                    </span>
+                  )}
+                </div>
+
+                {/* FECHA */}
+                <div className="form-group-asi">
+                  <label>Fecha de Asignación</label>
+                  <div
+                    className={`input-icon-asi ${
+                      errores.fecha_asignacion ? "input-error" : ""
+                    }`}
+                  >
+                    <FaCalendarAlt className="icon-input-asi" />
+                    <input
+                      type="date"
+                      name="fecha_asignacion"
+                      value={asignacion.fecha_asignacion}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setAsignacion((prev) => ({
+                          ...prev,
+                          fecha_asignacion: value,
+                        }));
+                        if (errores.fecha_asignacion) {
+                          setErrores((prev) => ({
+                            ...prev,
+                            fecha_asignacion: undefined,
+                          }));
+                        }
+                      }}
+                    />
+                  </div>
+                  {errores.fecha_asignacion && (
+                    <span className="mensaje-error">
+                      {errores.fecha_asignacion}
+                    </span>
+                  )}
+                </div>
+
+                {/* DEPARTAMENTO */}
+                <div className="form-group-asi">
+                  <label>Departamento</label>
+                  <div
+                    className={`input-icon-asi ${
+                      errores.area_id ? "input-error" : ""
+                    }`}
+                  >
+                    <FaBriefcase className="icon-input-asi" />
+                    <select
+                      name="area_id"
+                      value={asignacion.area_id || ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setAsignacion((prev) => ({
+                          ...prev,
+                          area_id: value,
+                        }));
+                        if (errores.area_id) {
+                          setErrores((prev) => ({
+                            ...prev,
+                            area_id: undefined,
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">
+                        -- Seleccione un Departamento --
+                      </option>
+                      {areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nombre} {a.ubicacion ? `- ${a.ubicacion}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {errores.area_id && (
+                    <span className="mensaje-error">{errores.area_id}</span>
+                  )}
+                </div>
+
+                {/* BIENES */}
+                <div className="form-group-asi">
+                  <label>Seleccionar Bienes por Categoría</label>
+                  {Object.keys(productos).map((cat, i) => (
+                    <div key={i} className="categoria-item">
+                      <label className="categoria-label">
+                        <FaBriefcase className="categoria-icon" />
+                        {cat}
+                      </label>
+                      <div className="input-icon-asi">
+                        <FaClipboardList className="icon-input-asi" />
+                        <input
+                          readOnly
+                          placeholder="-- Seleccione productos --"
+                          value={
+                            bienesSeleccionados[cat]
+                              ? bienesSeleccionados[cat]
+                                  .map((p) => p.nombre)
+                                  .join(", ")
+                              : ""
+                          }
+                          onClick={() => {
+                            // Lector puede ver submodal pero no marcar
+                            setCategoriaSeleccionada(cat);
+                            setPaginaProductosActual(1);
+                            setMostrarSubModal(true);
+                            if (errores.bienes) {
+                              setErrores((prev) => ({
+                                ...prev,
+                                bienes: undefined,
+                              }));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {errores.bienes && (
+                    <span className="mensaje-error">{errores.bienes}</span>
+                  )}
+                </div>
+
+                <div className="modal-actions">
+                  <button
+                    type="button"
+                    className="btn-cancel"
+                    onClick={() => {
+                      setMostrarModalFormulario(false);
+                      setErrores({});
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-submit"
+                    disabled={guardando}
+                  >
+                    {guardando ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </fieldset>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🆕 Modal Nueva adjudicación (Recepción) */}
+      {mostrarModalRecepcion && (
+        <div
+          className="modal-overlay-asi"
+          onClick={() => {
+            setMostrarModalRecepcion(false);
+          }}
+        >
+          <div
+            className="modal-form-asi"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="modal-title-asi">
+              {editRecepcionId ? "Editar adjudicación" : "Nueva adjudicación"}
+            </h2>
+
+            <form onSubmit={handleSubmitRecepcion}>
+              <fieldset disabled={lector}>
+                {/* RESPONSABLE */}
+                <div className="form-group-asi">
+                  <label>Responsable</label>
+                  <div className="input-icon-asi">
+                    <FaUser className="icon-input-asi" />
+                    <select
+                      name="responsable_id"
+                      className="select-responsable-scroll"
+                      value={recepcion.responsable_id}
+                      onChange={(e) =>
+                        setRecepcion((prev) => ({
+                          ...prev,
+                          responsable_id: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">
+                        -- Seleccione un responsable --
+                      </option>
+                      {responsables.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre} {r.apellido}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* FECHA DEVOLUCIÓN */}
+                <div className="form-group-asi">
+                  <label>Fecha de Devolución</label>
+                  <div className="input-icon-asi">
+                    <FaCalendarAlt className="icon-input-asi" />
+                    <input
+                      type="date"
+                      name="fecha_devolucion"
+                      value={recepcion.fecha_devolucion}
+                      onChange={(e) =>
+                        setRecepcion((prev) => ({
+                          ...prev,
+                          fecha_devolucion: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* DEPARTAMENTO */}
+                <div className="form-group-asi">
+                  <label>Departamento</label>
+                  <div className="input-icon-asi">
+                    <FaBriefcase className="icon-input-asi" />
+                    <select
+                      name="area_id"
+                      value={recepcion.area_id || ""}
+                      onChange={(e) =>
+                        setRecepcion((prev) => ({
+                          ...prev,
+                          area_id: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">
+                        -- Seleccione un Departamento --
+                      </option>
+                      {areas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.nombre} {a.ubicacion ? `- ${a.ubicacion}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* BIENES POR CATEGORÍA */}
+                <div className="form-group-asi">
+                  <label>Seleccionar Bienes por Categoría</label>
+                  {Object.keys(productos).map((cat, i) => (
+                    <div key={i} className="categoria-item">
+                      <label className="categoria-label">
+                        <FaBriefcase className="categoria-icon" />
+                        {cat}
+                      </label>
+                      <div className="input-icon-asi">
+                        <FaClipboardList className="icon-input-asi" />
+                        <input
+                          readOnly
+                          placeholder="-- Seleccione productos --"
+                          value={
+                            bienesSeleccionados[cat]
+                              ? bienesSeleccionados[cat]
+                                  .map((p) => p.nombre)
+                                  .join(", ")
+                              : ""
+                          }
+                          onClick={() => {
+                            setCategoriaSeleccionada(cat);
+                            setPaginaProductosActual(1);
+                            setMostrarSubModal(true);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={() => {
+                    setMostrarModalRecepcion(false);
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-submit">
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 🟡 Modal tabla ASIGNACIONES */}
+      {mostrarModalTabla && (
+        <div
+          className="modal-overlay"
+          onClick={() => setMostrarModalTabla(false)}
+        >
+          <div
+            className="modal-tabla"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title">Asignaciones Registradas</h2>
+            </div>
+            <div className="modal-body">
+              {cargando ? (
+                <div className="tabla-cargando">
+                  <div className="spinner"></div>
+                  <p>Cargando asignaciones...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="filtro-bar">
+                    <div className="busqueda-contenedor-asi">
+                      <FaSearch className="icono-busqueda-asi" />
+                      <input
+                        type="text"
+                        placeholder="Buscar responsable o producto..."
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        className="input-busqueda-asi"
+                      />
+                    </div>
+
+                    <select
+                      className="select-filtro"
+                      value={filtroResponsable}
+                      onChange={(e) =>
+                        setFiltroResponsable(e.target.value)
+                      }
+                    >
+                      <option value="">
+                        Filtrar por responsable...
+                      </option>
+                      {[...new Set(
+                        asignaciones.map((a) => a.responsable?.nombre)
+                      )]
+                        .filter(Boolean)
+                        .map((nombre, i) => (
+                          <option key={i} value={nombre}>
+                            {nombre}
+                          </option>
+                        ))}
+                    </select>
+
+                    <select
+                      className="select-filtro"
+                      value={filtroCategoria}
+                      onChange={(e) =>
+                        setFiltroCategoria(e.target.value)
+                      }
+                    >
+                      <option value="">
+                        Filtrar por categoría...
+                      </option>
+                      {[...new Set(
+                        asignaciones.flatMap((a) =>
+                          a.productos.map((p) => p.categoria)
+                        )
+                      )]
+                        .filter(Boolean)
+                        .map((cat, i) => (
+                          <option key={i} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                    </select>
+
+                    <div className="acciones-excel">
+                      <button
+                        className="btn-excel-exportar"
+                        onClick={exportarExcelAsignaciones}
+                      >
+                        Exportar Excel
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="tabla-scroll">
+                    <table className="tabla-elegante">
+                      <thead>
+                        <tr>
+                          <th>Responsable</th>
+                          <th>Ubicación</th>
+                          <th>Fecha</th>
+                          <th>Categoría</th>
+                          <th>Productos</th>
+                          {admin && <th>Acciones</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginaAsignaciones.length > 0 ? (
+                          paginaAsignaciones.map((a) => (
+                            <tr key={a.id}>
+                              <td>{a.responsable?.nombre}</td>
+                              <td>
+                                {a.area
+                                  ? `${
+                                      a.area.nombre ||
+                                      a.area.area ||
+                                      "sin nombre"
+                                    }${
+                                      a.area.ubicacion
+                                        ? " - " + a.area.ubicacion
+                                        : ""
+                                    }`
+                                  : "Sin nombre "}
+                              </td>
+                              <td>{a.fecha_asignacion}</td>
+                              <td>
+                                {[
+                                  ...new Set(
+                                    a.productos.map((p) => p.categoria)
+                                  ),
+                                ].join(", ")}
+                              </td>
+                              <td>
+                                {a.productos.map((p) => (
+                                  <div
+                                    key={p.id}
+                                    className="producto-mini-row"
+                                  >
+                                    {p.codigo} - {p.nombre}
+                                  </div>
+                                ))}
+                              </td>
+                              {admin && (
+                                <td>
+                                  <button
+                                    className="btn-accion editar"
+                                    onClick={() =>
+                                      editarAsignacion(a)
+                                    }
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button
+                                    className="btn-accion eliminar"
+                                    onClick={() =>
+                                      eliminarAsignacion(a.id)
+                                    }
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6">No hay asignaciones</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 🔵 Paginación circular tabla asignaciones */}
+                  <div className="pagination-bar">
+                    <span className="pagination-info">
+                      Mostrando{" "}
+                      {asignacionesFiltradas.length === 0
+                        ? 0
+                        : indicePrimeroAsign + 1}{" "}
+                      a{" "}
+                      {Math.min(
+                        indiceUltimoAsign,
+                        asignacionesFiltradas.length
+                      )}{" "}
+                      de {asignacionesFiltradas.length}
+                    </span>
+
+                    <div className="pagination-circle">
+                      <button
+                        className="page-btn"
+                        disabled={
+                          paginaAsignacionesActual === 1 ||
+                          totalPaginasAsign === 0
+                        }
+                        onClick={() =>
+                          setPaginaAsignacionesActual((prev) =>
+                            Math.max(prev - 1, 1)
+                          )
+                        }
+                      >
+                        ‹
+                      </button>
+
+                      {paginasAsign.map((num) => (
+                        <button
+                          key={num}
+                          className={`page-btn ${
+                            paginaAsignacionesActual === num
+                              ? "active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setPaginaAsignacionesActual(num)
+                          }
+                        >
+                          {num}
+                        </button>
+                      ))}
+
+                      <button
+                        className="page-btn"
+                        disabled={
+                          paginaAsignacionesActual ===
+                            totalPaginasAsign ||
+                          totalPaginasAsign === 0
+                        }
+                        onClick={() =>
+                          setPaginaAsignacionesActual((prev) =>
+                            Math.min(prev + 1, totalPaginasAsign)
+                          )
+                        }
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟡 Modal tabla RECEPCIONES */}
+      {mostrarModalTablaRecep && (
+        <div
+          className="modal-overlay"
+          onClick={() => setMostrarModalTablaRecep(false)}
+        >
+          <div
+            className="modal-tabla"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title">Recepciones Registradas</h2>
+            </div>
+            <div className="modal-body">
+              {cargando ? (
+                <div className="tabla-cargando">
+                  <div className="spinner"></div>
+                  <p>Cargando recepciones...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="filtro-bar">
+                    <div className="busqueda-contenedor-asi">
+                      <FaSearch className="icono-busqueda-asi" />
+                      <input
+                        type="text"
+                        placeholder="Buscar responsable o producto..."
+                        value={busquedaRecep}
+                        onChange={(e) =>
+                          setBusquedaRecep(e.target.value)
+                        }
+                        className="input-busqueda-asi"
+                      />
+                    </div>
+
+                    <select
+                      className="select-filtro"
+                      value={filtroResponsableRecep}
+                      onChange={(e) =>
+                        setFiltroResponsableRecep(e.target.value)
+                      }
+                    >
+                      <option value="">
+                        Filtrar por responsable...
+                      </option>
+                      {[...new Set(
+                        recepciones.map((r) => r.responsable?.nombre)
+                      )]
+                        .filter(Boolean)
+                        .map((nombre, i) => (
+                          <option key={i} value={nombre}>
+                            {nombre}
+                          </option>
+                        ))}
+                    </select>
+
+                    <select
+                      className="select-filtro"
+                      value={filtroCategoriaRecep}
+                      onChange={(e) =>
+                        setFiltroCategoriaRecep(e.target.value)
+                      }
+                    >
+                      <option value="">
+                        Filtrar por categoría...
+                      </option>
+                      {[...new Set(
+                        recepciones.flatMap((r) =>
+                          (r.productos || []).map((p) => p.categoria)
+                        )
+                      )]
+                        .filter(Boolean)
+                        .map((cat, i) => (
+                          <option key={i} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="tabla-scroll">
+                    <table className="tabla-elegante">
+                      <thead>
+                        <tr>
+                          <th>Responsable</th>
+                          <th>Ubicación</th>
+                          <th>Fecha</th>
+                          <th>Categoría</th>
+                          <th>Productos</th>
+                          {admin && <th>Acciones</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginaRecepciones.length > 0 ? (
+                          paginaRecepciones.map((r) => (
+                            <tr key={r.id}>
+                              <td>{r.responsable?.nombre}</td>
+                              <td>
+                                {r.area
+                                  ? `${
+                                      r.area.nombre ||
+                                      r.area.area ||
+                                      "sin nombre"
+                                    }${
+                                      r.area.ubicacion
+                                        ? " - " + r.area.ubicacion
+                                        : ""
+                                    }`
+                                  : "Sin nombre "}
+                              </td>
+                              <td>
+                                {r.fecha_devolucion
+                                  ? r.fecha_devolucion.slice(0, 10)
+                                  : ""}
+                              </td>
+                              <td>
+                                {[
+                                  ...new Set(
+                                    (r.productos || []).map(
+                                      (p) => p.categoria
+                                    )
+                                  ),
+                                ].join(", ")}
+                              </td>
+                              <td>
+                                {(r.productos || []).map((p) => (
+                                  <div
+                                    key={p.id}
+                                    className="producto-mini-row"
+                                  >
+                                    {p.codigo} - {p.nombre}
+                                  </div>
+                                ))}
+                              </td>
+                              {admin && (
+                                <td>
+                                  <button
+                                    className="btn-accion editar"
+                                    onClick={() => editarRecepcion(r)}
+                                  >
+                                    <FaEdit />
+                                  </button>
+                                  <button
+                                    className="btn-accion eliminar"
+                                    onClick={() =>
+                                      eliminarRecepcion(r.id)
+                                    }
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={admin ? 6 : 5}>
+                              No hay recepciones
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 🔵 Paginación circular tabla recepciones */}
+                  <div className="pagination-bar">
+                    <span className="pagination-info">
+                      Mostrando{" "}
+                      {recepcionesFiltradas.length === 0
+                        ? 0
+                        : indicePrimeraRecep + 1}{" "}
+                      a{" "}
+                      {Math.min(
+                        indiceUltimaRecep,
+                        recepcionesFiltradas.length
+                      )}{" "}
+                      de {recepcionesFiltradas.length}
+                    </span>
+
+                    <div className="pagination-circle">
+                      <button
+                        className="page-btn"
+                        disabled={
+                          paginaRecepcionesActual === 1 ||
+                          totalPaginasRecep === 0
+                        }
+                        onClick={() =>
+                          setPaginaRecepcionesActual((prev) =>
+                            Math.max(prev - 1, 1)
+                          )
+                        }
+                      >
+                        ‹
+                      </button>
+
+                      {paginasRecep.map((num) => (
+                        <button
+                          key={num}
+                          className={`page-btn ${
+                            paginaRecepcionesActual === num
+                              ? "active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setPaginaRecepcionesActual(num)
+                          }
+                        >
+                          {num}
+                        </button>
+                      ))}
+
+                      <button
+                        className="page-btn"
+                        disabled={
+                          paginaRecepcionesActual ===
+                            totalPaginasRecep ||
+                          totalPaginasRecep === 0
+                        }
+                        onClick={() =>
+                          setPaginaRecepcionesActual((prev) =>
+                            Math.min(prev + 1, totalPaginasRecep)
+                          )
+                        }
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🟣 Submodal productos */}
+      {mostrarSubModal && categoriaSeleccionada && (
+        <div
+          className="modal-overlay"
+          onClick={() => setMostrarSubModal(false)}
+        >
+          <div
+            className="modal small"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="modal-title">{categoriaSeleccionada}</h3>
+
+            {(() => {
+              const productosCat = productos[categoriaSeleccionada] || [];
+
+              const totalPaginasProd = Math.ceil(
+                productosCat.length / productosPorPagina
+              );
+              const indiceUltimoProd =
+                paginaProductosActual * productosPorPagina;
+              const indicePrimeroProd =
+                indiceUltimoProd - productosPorPagina;
+              const productosPagina = productosCat.slice(
+                indicePrimeroProd,
+                indiceUltimoProd
+              );
+              const paginasProd =
+                totalPaginasProd > 0
+                  ? Array.from(
+                      { length: totalPaginasProd },
+                      (_, i) => i + 1
+                    )
+                  : [];
+
+              return (
+                <>
+                  <table className="tabla-elegante mini">
+                    <thead>
+                      <tr>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th>Descripción</th>
+                        <th>Detalles</th>
+                        <th>Seleccionar</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {productosPagina.map((p) => {
+                        const seleccionados =
+                          bienesSeleccionados[
+                            categoriaSeleccionada
+                          ] || [];
+                        const estaSeleccionado =
+                          seleccionados.some((x) => x.id === p.id);
+                        return (
+                          <tr key={p.id}>
+                            <td>{p.codigo}</td>
+                            <td>{p.nombre}</td>
+                            <td>
+                              {p.descripcion || "Sin descripción"}
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <FaInfoCircle
+                                className="info-icon"
+                                onClick={() => {
+                                  setProductoDetalle(p);
+                                  setMostrarDetalles(true);
+                                }}
+                              />
+                            </td>
+                            <td style={{ textAlign: "center" }}>
+                              <input
+                                type="checkbox"
+                                checked={estaSeleccionado}
+                                disabled={lector}
+                                onChange={() => {
+                                  if (lector) {
+                                    toast.info(
+                                      "Solo lectura: no puedes modificar los bienes asignados "
+                                    );
+                                    return;
+                                  }
+                                  let nuevos = [...seleccionados];
+                                  if (estaSeleccionado) {
+                                    nuevos = nuevos.filter(
+                                      (x) => x.id !== p.id
+                                    );
+                                  } else {
+                                    nuevos.push(p);
+                                  }
+                                  setBienesSeleccionados({
+                                    ...bienesSeleccionados,
+                                    [categoriaSeleccionada]:
+                                      nuevos,
+                                  });
+                                  if (errores.bienes) {
+                                    setErrores((prev) => ({
+                                      ...prev,
+                                      bienes: undefined,
+                                    }));
+                                  }
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+
+                  {/* 🔵 Paginación circular submodal productos */}
+                  <div className="pagination-bar">
+                    <span className="pagination-info">
+                      Mostrando{" "}
+                      {productosCat.length === 0
+                        ? 0
+                        : indicePrimeroProd + 1}{" "}
+                      a{" "}
+                      {Math.min(
+                        indiceUltimoProd,
+                        productosCat.length
+                      )}{" "}
+                      de {productosCat.length}
+                    </span>
+
+                    <div className="pagination-circle">
+                      <button
+                        className="page-btn"
+                        disabled={
+                          paginaProductosActual === 1 ||
+                          totalPaginasProd === 0
+                        }
+                        onClick={() =>
+                          setPaginaProductosActual((prev) =>
+                            Math.max(prev - 1, 1)
+                          )
+                        }
+                      >
+                        ‹
+                      </button>
+
+                      {paginasProd.map((num) => (
+                        <button
+                          key={num}
+                          className={`page-btn ${
+                            paginaProductosActual === num
+                              ? "active"
+                              : ""
+                          }`}
+                          onClick={() =>
+                            setPaginaProductosActual(num)
+                          }
+                        >
+                          {num}
+                        </button>
+                      ))}
+
+                      <button
+                        className="page-btn"
+                        disabled={
+                          paginaProductosActual ===
+                            totalPaginasProd ||
+                          totalPaginasProd === 0
+                        }
+                        onClick={() =>
+                          setPaginaProductosActual((prev) =>
+                            Math.min(prev + 1, totalPaginasProd)
+                          )
+                        }
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="modal-actions">
+                    <button
+                      className="btn-cancel"
+                      onClick={() => setMostrarSubModal(false)}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* 🔍 Detalle producto */}
+      {mostrarDetalles && productoDetalle && (
+        <div
+          className="modal-overlay"
+          onClick={() => setMostrarDetalles(false)}
+        >
+          <div
+            className="modal small"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="modal-title">Detalle del Producto</h2>
+
+            <p>
+              <strong>Nombre:</strong> {productoDetalle.nombre}
+            </p>
+            <p>
+              <strong>Código:</strong> {productoDetalle.codigo}
+            </p>
+            <p>
+              <strong>Descripción:</strong>{" "}
+              {productoDetalle.descripcion || "Sin descripción"}
+            </p>
+            <p>
+              <strong>Categoría:</strong> {productoDetalle.categoria}
+            </p>
+            <p>
+              <strong>Fecha Ingreso:</strong>{" "}
+              {productoDetalle.fecha_ingreso
+                ? productoDetalle.fecha_ingreso.slice(0, 10)
+                : "Sin fecha"}
+            </p>
+
+            {productoDetalle.categoria === "Equipo de Computo" && (
+              <>
+                <p>
+                  <strong>Marca:</strong> {productoDetalle.marca}
+                </p>
+                <p>
+                  <strong>Modelo:</strong> {productoDetalle.modelo}
+                </p>
+                <p>
+                  <strong>N° Serie:</strong>{" "}
+                  {productoDetalle.numero_serie}
+                </p>
+              </>
+            )}
+
+            {productoDetalle.categoria === "Equipo de Oficina" && (
+              <>
+                <p>
+                  <strong>Marca:</strong> {productoDetalle.marca}
+                </p>
+                <p>
+                  <strong>Modelo:</strong> {productoDetalle.modelo}
+                </p>
+                <p>
+                  <strong>N° Serie:</strong>{" "}
+                  {productoDetalle.numero_serie}
+                </p>
+              </>
+            )}
+
+            {productoDetalle.categoria === "Muebles y Enseres" && (
+              <>
+                <p>
+                  <strong>Dimensiones:</strong>{" "}
+                  {productoDetalle.dimensiones}
+                </p>
+                <p>
+                  <strong>Color:</strong> {productoDetalle.color}
+                </p>
+              </>
+            )}
+
+            <div className="modal-actions">
+              <button
+                className="btn-cancel"
+                onClick={() => setMostrarDetalles(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ToastContainer
+        position="top-right"
+        autoClose={2000}
+        hideProgressBar
+        closeButton={false}
+      />
+    </div>
+  );
+};
+
+export default Asignacion;
+
+
+src\context\NotificacionesContext.jsx:
+// src/context/NotificacionesContext.jsx
+import React, { createContext, useContext, useState, useEffect } from "react";
+
+const NotificacionesContext = createContext();
+
+export const useNotificaciones = () => useContext(NotificacionesContext);
+
+export const NotificacionesProvider = ({ children }) => {
+  // 👉 Cargar desde localStorage al iniciar
+  const [notificaciones, setNotificaciones] = useState(() => {
+    try {
+      const guardadas = localStorage.getItem("notificaciones");
+      return guardadas ? JSON.parse(guardadas) : [];
+    } catch (e) {
+      console.error("Error leyendo notificaciones de localStorage", e);
+      return [];
+    }
+  });
+
+  // 👉 Cada vez que cambien, guardarlas en localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("notificaciones", JSON.stringify(notificaciones));
+    } catch (e) {
+      console.error("Error guardando notificaciones en localStorage", e);
+    }
+  }, [notificaciones]);
+
+  const agregarNotificacion = (notif) => {
+    const nueva = {
+      id: Date.now(),
+      titulo: notif.titulo || "Notificación",
+      mensaje: notif.mensaje || "",
+      fecha: notif.fecha || new Date().toISOString(),
+      leido: false,
+    };
+
+    setNotificaciones((prev) => [nueva, ...prev].slice(0, 20)); // máximo 20
+  };
+
+  const marcarTodasLeidas = () => {
+    setNotificaciones((prev) =>
+      prev.map((n) => ({
+        ...n,
+        leido: true,
+      }))
+    );
+  };
+
+  const eliminarNotificacion = (id) => {
+    setNotificaciones((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const noLeidas = notificaciones.filter((n) => !n.leido).length;
+
+  return (
+    <NotificacionesContext.Provider
+      value={{
+        notificaciones,
+        noLeidas,
+        agregarNotificacion,
+        marcarTodasLeidas,
+        eliminarNotificacion,
+      }}
+    >
+      {children}
+    </NotificacionesContext.Provider>
+  );
+};
+
+
+
+---------------- BACKEND LARAVEL ---------------------------------
+routes\api.php:
+
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ResponsableController;
+use App\Http\Controllers\Api\ProductoController;
+use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\AsignacionController;
+use App\Http\Controllers\DepartamentoController;
+use App\Http\Controllers\MovimientoController;
+use App\Http\Controllers\ActaController;
+use App\Http\Controllers\RecepcionController;
+
+// 🔓 Rutas públicas
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+// 🔐 Rutas protegidas con JWT
+Route::group(['middleware' => ['jwt.verify']], function () {
+// Exportar productos seleccionados a Word
+Route::post('/productos/exportar-word', [ProductoController::class, 'exportarWordSeleccionados']);
+
+    // auth
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+
+    // responsables
+    Route::apiResource('responsables', ResponsableController::class);
+
+    // departamentos
+    Route::apiResource('departamentos', DepartamentoController::class);
+
+    // productos
+    Route::apiResource('productos', ProductoController::class);
+    Route::get('/productos/inactivos', [ProductoController::class, 'inactivos']);
+
+    // movimientos
+    Route::get('/movimientos', [MovimientoController::class, 'index']);
+
+    // usuarios (con roles)
+    Route::middleware('role:admin,lector')->get('/usuarios', [UsuarioController::class, 'index']);
+    Route::middleware('role:admin')->post('/usuarios', [UsuarioController::class, 'store']);
+    Route::middleware('role:admin')->put('/usuarios/{id}', [UsuarioController::class, 'update']);
+    Route::middleware('role:admin')->delete('/usuarios/{id}', [UsuarioController::class, 'destroy']);
+
+    // asignaciones
+    Route::middleware('role:admin,lector')->get('/asignaciones', [AsignacionController::class, 'index']);
+    Route::middleware('role:admin')->post('/asignaciones', [AsignacionController::class, 'store']);
+    Route::middleware('role:admin')->put('/asignaciones/{id}', [AsignacionController::class, 'update']);
+    Route::middleware('role:admin')->delete('/asignaciones/{id}', [AsignacionController::class, 'destroy']);
+
+    // 📦 Recepciones
+    Route::middleware('role:admin,lector')->get('/recepciones', [RecepcionController::class, 'index']);
+
+    Route::middleware('role:admin')->group(function () {
+    Route::post('/recepciones', [RecepcionController::class, 'store']);
+    Route::put('/recepciones/{id}', [RecepcionController::class, 'update']);
+    Route::delete('/recepciones/{id}', [RecepcionController::class, 'destroy']);
+});
+
+    // 🆕 actas
+    Route::get('/actas', [ActaController::class, 'index']);
+    Route::post('/actas/generar', [ActaController::class, 'generarDesdeAsignacion']);
+    Route::get('/actas/{id}/descargar', [ActaController::class, 'descargar']);
+    // nuevas rutas específicas
+    Route::get('/actas/{id}/descargar-word', [ActaController::class, 'descargarWord']);
+    Route::get('/actas/{id}/descargar-pdf', [ActaController::class, 'descargarPdf']);
+});
+
+
+app\Http\Controllers:
+
+app\Http\Controllers\ActaController.php:
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Acta;
+use App\Models\Asignacion;
+use Illuminate\Http\Request;
+use PhpOffice\PhpWord\TemplateProcessor;
+use PhpOffice\PhpWord\Element\Table;
+use PhpOffice\PhpWord\SimpleType\JcTable;
+use Carbon\Carbon;
+
+class ActaController extends Controller
+{
+    // GET /api/actas
+    public function index()
+    {
+        // Traemos TODAS las asignaciones que pertenecen a cada acta
+        $actas = Acta::with([
+            'asignaciones.responsable',
+            'asignaciones.area',
+            'asignaciones.productos',
+        ])->orderBy('created_at', 'desc')->get();
+
+        return response()->json($actas);
+    }
+
+    // POST /api/actas/generar
+    public function generarDesdeAsignacion(Request $request)
+    {
+        $data = $request->validate([
+            'asignacion_id' => 'required|exists:asignaciones,id',
+        ]);
+
+        // 1) tomamos la asignación que disparó el acta
+        $asignacionBase = Asignacion::with(['responsable', 'area', 'productos'])
+            ->findOrFail($data['asignacion_id']);
+
+        // 2) buscamos TODAS las asignaciones de ese mismo responsable/área/fecha
+        //    que todavía NO tengan acta
+        $asignacionesDelLote = Asignacion::with(['productos', 'area', 'responsable'])
+            ->where('responsable_id', $asignacionBase->responsable_id)
+            ->where('area_id', $asignacionBase->area_id)
+            ->whereDate('fecha_asignacion', $asignacionBase->fecha_asignacion)
+            ->whereNull('acta_id')
+            ->get();
+
+        if ($asignacionesDelLote->isEmpty()) {
+            return response()->json([
+                'message' => 'No hay asignaciones pendientes para este responsable / área / fecha'
+            ], 400);
+        }
+
+        // 3) creamos el acta
+        $year = now()->year;
+        $correlativo = Acta::whereYear('fecha_creacion', $year)->count() + 1;
+        $codigo = 'ACT-' . $year . '-' . str_pad($correlativo, 4, '0', STR_PAD_LEFT);
+
+        $acta = Acta::create([
+            'codigo'         => $codigo,
+            'asignacion_id'  => $asignacionBase->id, // dejamos la primera como referencia
+            'responsable_id' => $asignacionBase->responsable_id,
+            'fecha_creacion' => now()->toDateString(),
+            'estado'         => 'Generada',
+        ]);
+
+        // 4) marcar todas las asignaciones del lote con este acta
+        foreach ($asignacionesDelLote as $asig) {
+            $asig->acta_id = $acta->id;
+            $asig->save();
+        }
+
+        // 5) abrir plantilla
+        $plantillaPath = storage_path('app/plantillas/FO-ER-012.docx');
+        if (!file_exists($plantillaPath)) {
+            return response()->json([
+                'message' => 'No se encontró la plantilla en storage/app/plantillas/FO-ER-012.docx',
+            ], 404);
+        }
+
+        $template = new TemplateProcessor($plantillaPath);
+
+        // ====== DATOS PARA LOS PLACEHOLDERS ======
+        $responsable = $asignacionBase->responsable;
+        $area        = $asignacionBase->area;
+
+        // Fecha de la asignación (día, mes, año en español)
+        Carbon::setLocale('es');
+        $fechaAsignacion = Carbon::parse($asignacionBase->fecha_asignacion);
+
+        $dia  = $fechaAsignacion->format('d');
+        $mes  = mb_strtolower($fechaAsignacion->translatedFormat('F'), 'UTF-8'); // ej: "junio"
+        $anio = $fechaAsignacion->format('Y');
+
+        $tituloResponsable = $responsable->titulo ?? '';   // Lcdo., Lcda., Ing., etc.
+        $nombreResp        = $responsable->nombre ?? '';
+        $apellidoResp      = $responsable->apellido ?? '';
+        $cedulaResp        = $responsable->cedula ?? '';
+
+        // ====== REEMPLAZOS SIMPLES EN LA PLANTILLA ======
+        $template->setValue('codigo_acta', $codigo);
+        $template->setValue('fecha_acta', now()->format('d/m/Y'));
+        $template->setValue('fecha_acta_numerica', now()->format('d/m/Y'));
+
+
+        // fecha desglosada
+        $template->setValue('dia_fecha', $dia);
+        $template->setValue('mes_fecha', $mes);
+        $template->setValue('anio_fecha', $anio);
+
+        // responsable
+        $template->setValue('responsable_titulo', $tituloResponsable);
+        $template->setValue('responsable_nombre', $nombreResp);
+        $template->setValue('responsable_apellido', $apellidoResp);
+        $template->setValue('responsable_cedula', $cedulaResp);
+
+        // por compatibilidad con el resto del documento
+        $template->setValue('area_nombre', $area->area ?? $area->nombre ?? '');
+
+        // ====== TABLA DE PRODUCTOS ======
+        $styleTable = [
+            'borderSize'  => 6,
+            'borderColor' => '1F4E78',
+            'cellMargin'  => 80,
+            'alignment'   => JcTable::CENTER,
+        ];
+
+        $headerCellStyle = [
+            'bgColor' => '1F4E78',
+            'valign'  => 'center',
+        ];
+        $headerTextStyle = [
+            'bold'  => true,
+            'color' => 'FFFFFF',
+        ];
+
+        $table = new Table($styleTable);
+
+        // encabezado
+        $table->addRow();
+        $table->addCell(1600, $headerCellStyle)->addText('Código', $headerTextStyle);
+        $table->addCell(1200, $headerCellStyle)->addText('Estado', $headerTextStyle);
+        $table->addCell(2200, $headerCellStyle)->addText('Nombre', $headerTextStyle);
+        $table->addCell(1800, $headerCellStyle)->addText('Categoría', $headerTextStyle);
+        $table->addCell(3000, $headerCellStyle)->addText('Descripción', $headerTextStyle);
+        $table->addCell(1800, $headerCellStyle)->addText('Área', $headerTextStyle);
+
+        // filas: recorremos cada asignación y dentro de ella sus productos
+        foreach ($asignacionesDelLote as $asig) {
+            foreach ($asig->productos as $prod) {
+                $table->addRow();
+                $table->addCell(1600)->addText($prod->codigo ?? '');
+                $table->addCell(1200)->addText($prod->estado ?? 'Activo');
+                $table->addCell(2200)->addText($prod->nombre ?? '');
+                $table->addCell(1800)->addText($prod->categoria ?? '');
+                $table->addCell(3000)->addText($prod->descripcion ?? '');
+                $table->addCell(1800)->addText($asig->area->area ?? $asig->area->nombre ?? '');
+            }
+        }
+
+        // insertar la tabla en el marcador del docx
+        $template->setComplexBlock('tabla_productos', $table);
+
+        // ====== GUARDAR SOLO DOCX ======
+        $outputDir = storage_path('app/actas');
+        if (!is_dir($outputDir)) {
+            mkdir($outputDir, 0775, true);
+        }
+
+        $outputPathDocx = $outputDir . '/ACTA-' . $codigo . '.docx';
+        $template->saveAs($outputPathDocx);
+
+        $archivoPathDocx = 'actas/ACTA-' . $codigo . '.docx';
+
+        // guardar ruta en la BD (PDF queda null)
+        $acta->update([
+            'archivo_path'     => $archivoPathDocx,
+            'archivo_pdf_path' => null,
+        ]);
+
+        return response()->json([
+            'message'      => 'Acta generada correctamente',
+            'acta_id'      => $acta->id,
+            'download_doc' => url('storage/' . $archivoPathDocx),
+            'download_pdf' => null,
+        ]);
+    }
+
+    // ========= DESCARGAS =========
+
+    // Ruta antigua: la dejo apuntando al Word por compatibilidad
+    public function descargar($id)
+    {
+        return $this->descargarWord($id);
+    }
+
+    // GET /api/actas/{id}/descargar-word
+    public function descargarWord($id)
+    {
+        $acta = Acta::findOrFail($id);
+
+        if (!$acta->archivo_path) {
+            return response()->json(['message' => 'No hay archivo Word registrado para esta acta'], 404);
+        }
+
+        $path = storage_path('app/' . $acta->archivo_path);
+
+        if (!file_exists($path)) {
+            return response()->json(['message' => 'Archivo Word no encontrado'], 404);
+        }
+
+        return response()->download($path);
+    }
+
+    // GET /api/actas/{id}/descargar-pdf
+    public function descargarPdf($id)
+    {
+        // Por ahora no generamos PDF
+        return response()->json([
+            'message' => 'La descarga en PDF aún no está disponible en esta versión del sistema.'
+        ], 501);
+    }
+}
+
+
+app\Http\Controllers\RecepcionController.php:
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Recepcion;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class RecepcionController extends Controller
+{
+    // 🟡 Listar todas las recepciones
+    public function index()
+    {
+        $recepciones = Recepcion::with(['responsable', 'area', 'productos'])
+            ->orderBy('fecha_devolucion', 'desc')
+            ->get();
+
+        return response()->json($recepciones);
+    }
+
+    // 🟢 Crear nueva recepción
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'responsable_id'   => 'required|exists:responsables,id',
+            'area_id'          => 'required|exists:departamentos,id',
+            'fecha_devolucion' => 'required|date',
+            'categoria'        => 'nullable|string|max:255',
+            'productos'        => 'required|array|min:1',
+            'productos.*'      => 'exists:productos,id',
+        ]);
+
+        return DB::transaction(function () use ($data) {
+            $recepcion = Recepcion::create([
+                'responsable_id'   => $data['responsable_id'],
+                'area_id'          => $data['area_id'],
+                'fecha_devolucion' => $data['fecha_devolucion'],
+                'categoria'        => $data['categoria'] ?? null,
+            ]);
+
+            $recepcion->productos()->sync($data['productos']);
+
+            return response()->json(
+                $recepcion->load(['responsable', 'area', 'productos']),
+                201
+            );
+        });
+    }
+
+    // 🔵 (Opcional) actualizar recepción
+    public function update(Request $request, $id)
+    {
+        $recepcion = Recepcion::findOrFail($id);
+
+        $data = $request->validate([
+            'responsable_id'   => 'required|exists:responsables,id',
+            'area_id'          => 'required|exists:departamentos,id',
+            'fecha_devolucion' => 'required|date',
+            'categoria'        => 'nullable|string|max:255',
+            'productos'        => 'required|array|min:1',
+            'productos.*'      => 'exists:productos,id',
+        ]);
+
+        return DB::transaction(function () use ($recepcion, $data) {
+            $recepcion->update([
+                'responsable_id'   => $data['responsable_id'],
+                'area_id'          => $data['area_id'],
+                'fecha_devolucion' => $data['fecha_devolucion'],
+                'categoria'        => $data['categoria'] ?? null,
+            ]);
+
+            $recepcion->productos()->sync($data['productos']);
+
+            return response()->json(
+                $recepcion->load(['responsable', 'area', 'productos'])
+            );
+        });
+    }
+
+    // 🔴 Eliminar recepción
+    public function destroy($id)
+    {
+        $recepcion = Recepcion::findOrFail($id);
+        $recepcion->delete();
+
+        return response()->json(['message' => 'Recepción eliminada'], 200);
+    }
+}
+
+
+app\Models:
+
+app\Models\Asignacion.php:
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+class Asignacion extends Model
+{
+    use HasFactory;
+
+    protected $table = 'asignaciones';
+
+    protected $fillable = [
+        'responsable_id',
+        'area_id',            // 👈 agregado
+        'fecha_asignacion',
+        'categoria'
+    ];
+
+    public function responsable()
+    {
+        return $this->belongsTo(Responsable::class);
+    }
+
+    public function area() // 👈 nueva relación
+    {
+        return $this->belongsTo(Departamento::class, 'area_id');
+    }
+
+    public function productos()
+    {
+        return $this->belongsToMany(Producto::class, 'asignacion_producto');
+    }
+
+    public function acta()
+    {
+    return $this->belongsTo(Acta::class, 'acta_id');
+    }   
+}
+
+app\Models\Recepcion.php:
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Recepcion extends Model
+{
+    use HasFactory;
+
+    protected $table = 'recepciones';
+
+    protected $fillable = [
+        'responsable_id',
+        'area_id',
+        'fecha_devolucion',
+        'categoria',
+    ];
+
+    protected $casts = [
+        'fecha_devolucion' => 'date',
+    ];
+
+    public function responsable()
+    {
+        return $this->belongsTo(Responsable::class);
+    }
+
+    public function area()
+    {
+        // Igual que en Asignacion: departamentos = áreas
+        return $this->belongsTo(Departamento::class, 'area_id');
+    }
+
+    public function productos()
+    {
+        return $this->belongsToMany(Producto::class, 'recepcion_producto')
+            ->withTimestamps();
+    }
+}
+
+
+
+app\Models\Acta.php:
+
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Acta extends Model
+{
+    protected $fillable = [
+        'codigo',
+        'asignacion_id',
+        'responsable_id',
+        'fecha_creacion',
+        'estado',
+        'archivo_path',
+        'archivo_pdf_path', // 👈 NUEVO
+    ];
+
+    public function asignaciones()
+    {
+        return $this->hasMany(Asignacion::class, 'acta_id');
+    }
+
+    public function responsable()
+    {
+        return $this->belongsTo(Responsable::class);
+    }
+}
+
+database\migrations:
+database\migrations\2025_10_27_015831_create_asignaciones_table.php:
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Tabla principal de asignaciones
+        Schema::create('asignaciones', function (Blueprint $table) {
+            $table->id();
+
+            // quién recibe
+            $table->unsignedBigInteger('responsable_id');
+
+            // a qué área/departamento está asociada la asignación
+            $table->unsignedBigInteger('area_id');
+
+            // fecha en la que se entregan/asignan los bienes
+            $table->date('fecha_asignacion');
+
+            // categoría de los bienes que se están asignando en este registro
+            // (Equipo de Computo, Muebles y Enseres, etc.)
+            $table->string('categoria');
+
+            // 👇 NUEVO: para saber en qué acta quedó esta asignación
+            // lo dejamos nullable porque primero se crea la asignación
+            // y después, cuando el usuario acepta en el SweetAlert, se genera el acta
+            $table->unsignedBigInteger('acta_id')->nullable();
+
+            $table->timestamps();
+
+            // claves foráneas
+            $table->foreign('responsable_id')
+                  ->references('id')
+                  ->on('responsables')
+                  ->onDelete('cascade');
+
+            $table->foreign('area_id')
+                  ->references('id')
+                  ->on('departamentos')
+                  ->onDelete('cascade');
+
+            // 👇 esta FK asume que ya hay una tabla 'actas'
+            // si la tabla 'actas' se crea después, puedes comentar esto,
+            // migrar, y luego volverlo a poner.
+            $table->foreign('acta_id')
+                  ->references('id')
+                  ->on('actas')
+                  ->onDelete('set null');
+        });
+
+        // Tabla pivote: qué productos pertenecen a cada asignación
+        Schema::create('asignacion_producto', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('asignacion_id');
+            $table->unsignedBigInteger('producto_id');
+            $table->timestamps();
+
+            $table->foreign('asignacion_id')
+                  ->references('id')
+                  ->on('asignaciones')
+                  ->onDelete('cascade');
+
+            $table->foreign('producto_id')
+                  ->references('id')
+                  ->on('productos')
+                  ->onDelete('cascade');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('asignacion_producto');
+        Schema::dropIfExists('asignaciones');
+    }
+};
+
+database\migrations\2025_12_03_041638_create_recepciones_tables.php:
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('recepciones', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('responsable_id');
+            $table->unsignedBigInteger('area_id');
+            $table->date('fecha_devolucion');
+            $table->string('categoria')->nullable();
+            $table->timestamps();
+
+            $table->foreign('responsable_id')
+                ->references('id')->on('responsables')
+                ->onDelete('cascade');
+
+            $table->foreign('area_id')
+                ->references('id')->on('departamentos')
+                ->onDelete('cascade');
+        });
+
+        Schema::create('recepcion_producto', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('recepcion_id');
+            $table->unsignedBigInteger('producto_id');
+            $table->timestamps();
+
+            $table->foreign('recepcion_id')
+                ->references('id')->on('recepciones')
+                ->onDelete('cascade');
+
+            $table->foreign('producto_id')
+                ->references('id')->on('productos')
+                ->onDelete('cascade');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('recepcion_producto');
+        Schema::dropIfExists('recepciones');
+    }
+};
+
+
+database\migrations\2025_10_26_155338_create_actas_table.php:
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('actas', function (Blueprint $table) {
+            $table->id();
+            $table->string('codigo')->unique();           // ACT-2025-0001
+            $table->unsignedBigInteger('responsable_id')->nullable();
+            $table->unsignedBigInteger('asignacion_id')->nullable(); // opcional, por si quieres guardar la “principal”
+            $table->date('fecha_creacion');
+            $table->string('estado')->default('Generada');
+            $table->string('archivo_path')->nullable();
+            $table->timestamps();
+
+            // si estas tablas existen antes, puedes dejar estas FK
+            $table->foreign('responsable_id')
+                  ->references('id')
+                  ->on('responsables')
+                  ->onDelete('set null');
+
+            // ⚠️ esta es opcional: si te da error porque aún no existe 'asignaciones',
+            // bórrala sin miedo, no es obligatoria para que el sistema funcione.
+            // $table->foreign('asignacion_id')
+            //       ->references('id')
+            //       ->on('asignaciones')
+            //       ->onDelete('set null');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('actas');
+    }
+};
+
+
+

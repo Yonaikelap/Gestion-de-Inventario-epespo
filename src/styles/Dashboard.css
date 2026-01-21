@@ -1,45 +1,92 @@
+@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600&display=swap");
 .dashboard-container {
   display: flex;
+  height: 100vh;
+  overflow: hidden;
 }
 .main-content {
-  margin-left: 250px;
+  position: relative;              
+  margin-left: 220px;              
+  width: calc(100% - 220px);
+  height: 100vh;
+  overflow: hidden;
+  transition: margin-left 0.3s, width 0.3s;
+}
+.content-vi {
+  padding: 0;
+  margin: 0;
   width: 100%;
-  transition: margin-left 0.3s;
-  background-color: #F2F2F2; /* fondo gris claro */
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
 }
-.sidebar.closed ~ .main-content {
-  margin-left: 70px;
-}
-.content {
-  padding: 20px;
-  color: #003366; /* texto azul oscuro */
-}
-.content {
-  padding: 20px;
-  color: #003366;
+.video-container {
+  position: relative;   
+  width: 100%;
+  height: 100%;
   display: flex;
-  flex-direction: column;
-  align-items: center; /* centra horizontalmente */
-  justify-content: center; /* centra verticalmente */
-  min-height: calc(100vh - 60px); /* altura total menos navbar */
-  text-align: center;
+  overflow: hidden;
 }
-
-.image-container {
-  margin-top: 30px;
-}
-
-.dashboard-logo {
-  max-width: 300px;
+.dashboard-video {
   width: 100%;
-  height: auto;
-  border-radius: 15px; /* opcional, bordes redondeados */
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2); /* sombra profesional */
-  transition: transform 0.3s;
+  height: 100%;
+  object-fit: cover;
 }
-
-.dashboard-logo:hover {
-  transform: scale(1.05); /* efecto hover */
+.navbar-fixed {
+  position: absolute; 
+  top: 0;
+  left: 0;             
+  width: 100%;
+  z-index: 10;          
 }
+.video-overlay {
+  position: absolute;
+  top: 50%;    
+  left: 50%;
+  transform: translate(-50%, -50%);  
+  z-index: 20;
+  display: flex;
+  flex-direction: column;            
+  align-items: center;
+}
+.overlay-img {
+  width: 350px;   
+  max-width: 80vw;
+  opacity: 0.9;  
+}
+.overlay-phrase {
+  margin-top: 20px;
+  display: flex;
+  gap: 2rem;                         
+  font-family: "Dancing Script", cursive;
+  font-size: 2.2rem;
+  color: #ffffff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.overlay-phrase-part {
+  white-space: nowrap;              
+}
+.overlay-phrase-part:last-child {
+  margin-top: 20px;   
+}
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
 
+  .navbar-fixed {
+    left: 0;
+    width: 100%;
+  }
+
+  .overlay-img {
+    width: 260px;
+  }
+
+  .overlay-phrase {
+    flex-direction: column;        
+    gap: 0.2rem;
+    font-size: 1.7rem;
+    text-align: center;
+  }
+}

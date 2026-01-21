@@ -1,0 +1,502 @@
+/* ================================
+   CONTENEDOR GENERAL DE ACTAS
+   ================================ */
+.content {
+  padding: 20px;
+}
+
+.actas-main {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.actas-content {
+  padding: 30px 40px;
+}
+
+.actas-wrapper {
+  max-width: 100%;
+  margin: 80px auto 24px;
+}
+
+.titulo-actas {
+  text-align: center;
+  margin: 0 0 18px;
+}
+
+.titulo-actas h2 {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #003366;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* ================================
+   CARD PRINCIPAL (altura fija + scroll)
+   ================================ */
+.actas-card {
+  background-color: #fff;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+  margin-bottom: 20px;
+
+  height: calc(100vh - 210px);
+  display: flex;
+  flex-direction: column;
+
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.actas-card:hover {
+  transform: translateY(-3px);
+}
+
+/* ================================
+   FILTROS Y BARRA DE BÚSQUEDA
+   ================================ */
+.filtros-actas {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  flex: 0 0 auto;
+}
+
+.filtro-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-busqueda-actas {
+  padding: 10px 12px 10px 30px;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px;
+  min-width: 240px;
+  background: #fff;
+}
+
+.icono-busqueda {
+  position: absolute;
+  left: 8px;
+  color: #555;
+  font-size: 14px;
+}
+
+.select-filtro-actas {
+  padding: 10px 12px;
+  border: 1px solid #dcdcdc;
+  border-radius: 12px;
+  background: #fff;
+  min-width: 160px;
+}
+
+.select-filtro-actas[type="date"] {
+  cursor: pointer;
+}
+
+/* ================================
+   TABLA ELEGANTE + SCROLL
+   ================================ */
+.tabla-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+
+.tabla-elegante {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.tabla-elegante thead {
+  background-color: #003366;
+  color: white;
+}
+
+.tabla-elegante th,
+.tabla-elegante td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.tabla-elegante th {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabla-elegante tr:hover td {
+  background-color: #f5f8fc;
+  transition: 0.2s ease;
+}
+
+.tabla-elegante td {
+  vertical-align: top;
+}
+
+.th-productos,
+.col-productos {
+  width: 280px;
+}
+
+.col-productos .producto-mini-row {
+  margin-bottom: 4px;
+  line-height: 1.3;
+  white-space: normal;
+}
+
+/* ================================
+   BOTONES DOCUMENTOS
+   ================================ */
+.docs-cell {
+  white-space: nowrap;
+}
+
+.btn-accion {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 18px;
+  margin-right: 8px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.btn-accion:hover {
+  transform: scale(1.15);
+  color: #007bff;
+}
+
+.btn-accion svg {
+  color: #003366;
+}
+
+.btn-accion:hover svg {
+  color: #007bff;
+}
+
+/* ✅ icono check cuando ya existe PDF */
+.pdf-ok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  margin-left: 6px;
+}
+
+.pdf-ok svg {
+  color: #16a34a;
+}
+
+/* ================================
+   SCROLLBAR PERSONALIZADO
+   ================================ */
+.tabla-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tabla-scroll::-webkit-scrollbar-thumb {
+  background-color: #003366;
+  border-radius: 10px;
+}
+
+.tabla-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #0055aa;
+}
+
+/* ================================
+   TEXTO VACÍO / MENSAJE SIN DATOS
+   ================================ */
+.tabla-elegante td[colspan] {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 30px 0;
+}
+
+/* ================================
+   PAGINACIÓN
+   ================================ */
+.pagination-bar {
+  position: static;
+  flex: 0 0 auto;
+  margin-top: 12px;
+  background: #fff;
+  z-index: 5;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagination-info {
+  font-size: 14px;
+  color: #555;
+}
+
+.pagination-circle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-btn {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background-color: #bfbfbf;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.page-btn.active {
+  background-color: #007bff;
+}
+
+.page-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ================================
+   MODAL SUBIR PDF
+   ================================ */
+.modal-overlay-actas {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-card-actas {
+  width: min(700px, 95vw);
+  background: #fff;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.modal-title-actas {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #0b2a55;
+}
+
+.modal-info-actas {
+  background: #f6f9ff;
+  border: 1px solid #e6eefc;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b2a55;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  width: fit-content;
+  user-select: none;
+}
+
+.file-label input {
+  display: none;
+}
+
+.file-name {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* ✅ mensaje validación */
+.upload-error {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.upload-ok {
+  margin: 8px 0 0;
+  color: #166534;
+  font-weight: 900;
+  font-size: 13px;
+}
+
+/* ✅ preview pdf */
+.pdf-preview {
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  height: 220px;
+}
+
+.pdf-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ✅ progreso */
+.progress-wrap {
+  margin-top: 12px;
+  position: relative;
+  height: 12px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: #0b2a55;
+  transition: width 0.2s ease;
+}
+
+.progress-text {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #0b2a55;
+}
+
+/* botones modal */
+.modal-actions-actas {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-sec {
+  flex: 1;
+  border: none;
+  background: #e5e7eb;
+  color: #111827;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.btn-pri {
+  flex: 1;
+  border: none;
+  background: #0b2a55;
+  color: #fff;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.btn-sec:disabled,
+.btn-pri:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+@media (max-width: 900px) {
+  .actas-card {
+    height: auto;
+  }
+
+  .filtros-actas {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tabla-elegante th,
+  .tabla-elegante td {
+    font-size: 14px;
+    padding: 8px;
+  }
+
+  .pagination-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .modal-card-actas {
+    padding: 16px;
+  }
+}
+
+
+/* ✅ Asegura altura fija de la card (si otra regla la pisa) */
+.actas-card {
+  height: calc(100vh - 210px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+
+  min-height: 0 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* ✅ Filtros NO deben crecer */
+.filtros-actas {
+  flex: 0 0 auto !important;
+}
+
+/* ✅ AQUÍ vive el scroll vertical y horizontal */
+.tabla-scroll {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* ✅ Por si alguna paginación está con position raro */
+.pagination-bar,
+.pagination-bar-actas {
+  position: static !important;
+  flex: 0 0 auto !important;
+  margin-top: 12px !important;
+  background: #fff !important;
+  z-index: 5;
+}

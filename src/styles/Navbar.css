@@ -1,46 +1,239 @@
-/* Navbar */
-.navbar {
-  height: 60px;
-  background-color: #021a32; /* azul oscuro consistente con el sidebar */
-  color: #fff; /* blanco para texto */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  position: sticky;
+/* Navbar.css */
+
+/* ====== TOPBAR GENERAL ====== */
+.topbar {
+  position: fixed;
   top: 0;
-  z-index: 100; /* para que siempre quede encima */
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* sutil sombra */
+  left: 80px;   /* coincide con sidebar colapsado */
+  right: 0;
+  height: 58px;
+  background: #001d3b;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 18px;
+  z-index: 90;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .12);
 }
 
-.navbar .logo {
-  font-weight: bold;
-  font-size: 1.2rem;
-  color: #fff;
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ====== BOTÓN CAMPANA ====== */
+.icon-btn {
+  position: relative;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:focus {
+  outline: none;
+}
+
+/* ====== USER BOX ====== */
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, .04);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.user-avatar {
+  font-size: 1.5rem;
+  color: #ffffff;
 }
 
 .user-info {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  line-height: 1;
 }
 
-.user-info .username {
-  color: #fff; /* blanco */
-  font-weight: 500;
-}
-
-.user-info .logout-btn {
-  background-color: #ff4d4d; /* rojo */
+.user-name {
   color: #fff;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: 0.3s;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.user-info .logout-btn:hover {
-  background-color: #ff0000; /* rojo intenso */
-  transform: translateY(-2px);
+.user-role {
+  color: rgba(255, 255, 255, .6);
+  font-size: 0.6rem;
+}
+
+/* ============================
+   NOTIFICACIONES
+===============================*/
+
+/* Contenedor de campana + panel */
+.noti-wrapper {
+  position: relative;
+}
+
+/* Badge rojo con número */
+.badge-noti {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #e63946;
+  color: #fff;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 11px;
+  border-radius: 999px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Panel flotante */
+.noti-dropdown {
+  position: absolute;
+  top: 48px;      /* justo debajo de la barra */
+  right: 0;
+  width: 380px;   /* parecido al de Moodle */
+  max-height: 500px;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 6px 25px rgba(0, 0, 0, .15);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+}
+
+/* Header del panel */
+.noti-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e7e7e7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fafafa;
+}
+
+.noti-header span {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Lista desplazable */
+.noti-list {
+  flex: 1;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+/* Texto cuando está vacío */
+.noti-empty {
+  padding: 14px;
+  font-size: 13px;
+  text-align: center;
+  color: #777;
+}
+
+/* Cada notificación */
+.noti-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: flex-start;
+}
+
+.noti-item:last-child {
+  border-bottom: none;
+}
+
+/* Borde de color para no leída */
+.noti-no-leido {
+  border-left: 3px solid #e63946;
+  background: #f9f9f9;
+}
+
+.noti-leido {
+  border-left: 3px solid transparent;
+  background: #ffffff;
+}
+
+/* Icono a la izquierda */
+.noti-icon {
+  font-size: 0.9rem;
+  color: #777;
+  margin-top: 4px;
+}
+
+/* Textos */
+.noti-textos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.noti-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.noti-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303030;
+}
+
+.noti-textos p {
+  font-size: 12px;
+  margin: 0;
+  color: #444;
+}
+
+.noti-fecha {
+  font-size: 11px;
+  color: #777;
+}
+
+/* Badge "Nuevo" */
+.badge-nuevo {
+  background: #0f6fc5;
+  color: #ffffff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+/* Botón X de eliminar */
+.noti-delete {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: #bbb;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.noti-delete:hover {
+  color: #ff3b3b;
+}
+
+/* Quitar fondo raro de botones en algunos navegadores */
+.icon-btn,
+.noti-delete {
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
 }

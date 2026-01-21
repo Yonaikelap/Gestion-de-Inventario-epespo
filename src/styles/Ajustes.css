@@ -1,0 +1,307 @@
+/* ============================================
+   🔵 TARJETAS (CARDS) AJUSTES / USUARIOS
+============================================ */
+.cards-grid-usuarios {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 24px 32px;
+  flex-wrap: nowrap;       /* 👉 para que SALGAN 2 en fila siempre */
+}
+
+.card {
+  width: 280px;
+  max-width: 320px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 25px rgba(0,0,0,0.15);
+}
+
+.card-icon {
+  font-size: 50px;
+  color: #0056a6;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #0056a6;
+  margin-bottom: 6px;
+}
+
+.card-subtitle {
+  font-size: 14px;
+  color: #666;
+}
+.modal-overlay-aju {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+/* ==========================
+   🔹 MODAL FORMULARIO
+========================== */
+.modal-form-aju {
+  background: #fff;
+  padding: 30px 25px;
+  border-radius: 16px;
+  max-width: 650px;   
+  width: 95%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  animation: modalFade 0.3s ease-in-out;
+}
+/* ==========================
+   🔹 TITULO DE MODAL
+========================== */
+.modal-title-aju {
+
+  font-size: 26px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 25px;
+  color: #000408;
+}
+
+/* ==========================
+   🔹 FORMULARIO
+========================== */
+.form-group-aju {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 15px;
+  width: 90%;              /* ⬅️ asegura que tome todo el ancho */
+}
+.form-group-aju label {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #181b1e;
+}
+.form-group-aju input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+}
+
+/* ==============================
+   INPUT CON ÍCONO
+============================== */
+.input-icon-aju {
+  position: relative;
+  width: 100%;              /* ⬅️ contenedor al 100% */
+}
+
+.icon-input-aju {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: #0f0101;
+  pointer-events: none;
+}
+
+
+.input-icon-aju input {
+  width: 100%;                         
+  padding: 10px 14px 10px 40px;             
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
+}
+
+.input-icon-aju input::placeholder {
+   color: #aaa;
+}
+
+.input-icon-aju input,
+.input-icon-aju select {
+  width: 100%;
+  padding: 10px 10px 10px 35px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.input-icon-aju input:focus,
+.input-icon-aju select:focus {
+  border-color: #0056a6;
+  box-shadow: 0 0 4px rgba(0, 86, 166, 0.4);
+}
+
+/* ============================================
+   📱 RESPONSIVE – MÓVIL
+============================================ */
+@media (max-width: 768px) {
+  .cards-grid-usuarios {
+    flex-wrap: wrap;     /* 👉 ahora sí permite que bajen */
+    justify-content: center;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 95%;
+  }
+}
+
+
+
+
+/* 🔹 Modal acciones */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* 🔹 Encabezado de modal tabla */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.modal-header .btn-cerrar {
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  color: #444;
+  transition: color 0.2s ease;
+}
+
+.modal-header .btn-cerrar:hover {
+  color: red;
+}
+
+
+/* 🔹 Filtro superior */
+.filtro-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+/* 🔹 Botón “Registrar Usuario” hover */
+.card.clickable:hover .card-icon {
+  color: #e31837;
+  transform: scale(1.05);
+}
+
+/* 🔹 Ajuste de spinner (cargador) */
+.spinner {
+  width: 60px;
+  height: 60px;
+  border-width: 6px;
+}
+
+/* 🔹 Responsivo */
+@media (max-width: 768px) {
+  .modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filtro-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal-form-aju {
+    padding: 20px;
+  }
+
+  .icon-input-aju {
+    left: 8px;
+  }
+}
+.skeleton-table {
+  width: 100%;
+  height: 250px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.3s infinite;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+/* ====================== */
+/* 🔵 CÍRCULO DE CARGA DENTRO DEL MODAL */
+/* ====================== */
+.tabla-cargando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 250px;
+  text-align: center;
+  color: #555;
+  font-weight: 500;
+}
+
+.spinner {
+  border: 5px solid #e0e0e0;
+  border-top: 5px solid #2575fc;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+/* ===== Badge Estado ===== */
+.badge-estado {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.badge-estado.activo {
+  background: #e8fff0;
+  color: #1f7a3a;
+}
+
+.badge-estado.inactivo {
+  background: #ffeaea;
+  color: #b00020;
+}
+
+/* Opcional: botón activar */
+.btn-accion.activar {
+  background: #2ecc71;
+  color: #fff;
+}

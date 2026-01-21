@@ -1,32 +1,34 @@
-/* Contenedor de las cards en fila horizontal */
-.cards-grid {
+
+.cards-grid-resp {
   display: flex;
-  flex-wrap: wrap;           /* Permite que se muevan a la siguiente fila */
-  justify-content: center;   /* Centra horizontalmente todas las filas */
-  gap: 30px;                 /* Espacio entre cards */
-  padding: 40px;
+  justify-content: center;   /* centra el grupo */
+  align-items: flex-start;
+  gap: 24px;
+  padding: 24px 32px;
+  flex-wrap: nowrap;         /* en desktop NO se bajan */
 }
 
-/* Ajuste de las cards */
-.card {
-  flex: 0 0 280px;           /* Ancho fijo para cada card */
-  padding: 25px;
-  background: #fff;          /* Blanco */
+.card-resp {
+  width: 280px;
+  max-width: 320px;
+  padding: 20px;
+  background: #fff;
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1); /* sombra sutil */
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   text-align: center;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card:hover {
+.card-resp:hover {
   transform: translateY(-5px);
   box-shadow: 0 6px 25px rgba(0,0,0,0.15);
 }
 
+/* Reutilizamos los estilos de icono/título/subtítulo */
 .card-icon {
   font-size: 50px;
-  color: #0056a6;            /* Azul oscuro */
+  color: #0056a6;
   margin-bottom: 10px;
 }
 
@@ -39,240 +41,400 @@
 
 .card-subtitle {
   font-size: 14px;
-  color: #666;               /* Gris para subtítulos */
+  color: #666;
 }
 
-/* Tabla tipo Excel */tabla para scroll horizontal */
-.tabla-contenedor {
-  width: 100%;
-  overflow-x: auto; /* Scroll horizontal si es necesario */
-  margin-bottom: 15px;
+/* Responsive: en móvil sí se ponen una debajo de otra */
+@media (max-width: 768px) {
+  .cards-grid-resp {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .card-resp {
+    width: 100%;
+    max-width: 100%;
+  }
 }
 
-/* Ajustes de tabla para que sea responsiva */
-.tabla-inventario {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: auto; /* Ajusta columnas al contenido */
-  word-wrap: break-word; /* Rompe palabras largas */
-  min-width: 600px; /* Ancho mínimo para tablas grandes */
-}
-
-/* Celdas */
-.tabla-inventario th,
-.tabla-inventario td {
-  border: 1px solid #ccc;
-  padding: 8px;
-  text-align: left;
-  vertical-align: middle;
-}
-
-/* Encabezados */
-.tabla-inventario th {
-  background-color: #0056a6;
-  color: #fff;
-}
-
-/* Filas alternas */
-.tabla-inventario tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-
-/* Centrar botones de acciones */
-.tabla-inventario td:last-child {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  background-color: #f1f3f5;
-  border-radius: 8px;
-  padding: 5px;
-  white-space: nowrap;
-}
-
-/* Texto largo dentro de celdas */
-.tabla-inventario td {
-  word-break: break-word; /* Rompe palabras largas */
-  max-width: 200px; /* Ajusta según necesites */
-}
-
-/* Botones tabla */
-.btn-edit {
-  background: #0056a6;
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  margin-right: 5px;
-  cursor: pointer;
-}
-
-.btn-edit:hover {
-  background: #004080;
-}
-
-.btn-delete {
-  background: #e31837; /* Rojo */
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.btn-delete:hover {
-  background: #b10f27;
-}
-
-/* Modal */
-.modal-overlay {
+/* ==========================
+   🔹 EFECTO MODAL
+========================== */
+.modal-overlay-re {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0,0,0,0.6); /* Fondo negro semitransparente */
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(3px);
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   z-index: 1000;
 }
 
-.modal {
-  background: #fff;
-  padding: 25px;
-  border-radius: 16px;
-  max-width: 600px;
-  width: 90%;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+@keyframes modalFade {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.modal-title {
-  font-size: 22px;
+.modal-form-re, .modal-tabla {
+  animation: modalFade 0.25s ease;
+}
+
+/* ==========================
+   🔹 MODAL FORMULARIO
+========================== */
+.modal-form-re {
+  background: #fff;
+  padding: 30px 25px;
+  border-radius: 16px;
+  max-width: 650px;   
+  width: 95%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  animation: modalFade 0.3s ease-in-out;
+}
+
+/* ==========================
+   🔹 MODAL TABLA
+========================== */
+.modal-tabla-re {
+  background: #fff;
+  width: 90%;
+  max-width: 1100px;
+  max-height: 855vh;
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ==========================
+   🔹 TITULO DE MODAL
+========================== */
+.modal-title-re {
+  font-size: 26px;
   font-weight: bold;
   text-align: center;
-  margin-bottom: 20px;
-  color: #0056a6; /* Azul */
+  margin-bottom: 25px;
+  color: #000408;
 }
 
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 15px;
-  gap: 10px;
-}
 
-.form {
+/* ==========================
+   🔹 FORMULARIO
+========================== */
+.form-group-re {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  margin-bottom: 15px;
+  width: 90%;              /* ⬅️ asegura que tome todo el ancho */
 }
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
+.form-group-re label {
   font-weight: 600;
   margin-bottom: 5px;
   color: #181b1e;
 }
-
-.form-group input,
-.form-group textarea {
+.form-group-re input {
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 10px;
   outline: none;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
-  border-color: #0056a6;
-  box-shadow: 0 0 5px rgba(0,86,166,0.5);
-}
-
-.btn-cancel {
-  background: #ccc;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  color: #000;
-}
-
-.btn-submit {
-  background: #0056a6;
-  color: white;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-submit:hover {
-  background: #e31837; /* Rojo al hover */
-}
-
-/* Paginación */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 15px;
-  gap: 10px;
-}
-
-.page-btn {
-  padding: 5px 10px;
-  border: 1px solid #0056a6;
-  border-radius: 6px;
-  background: white;
-  color: #0056a6;
-  cursor: pointer;
-}
-
-.page-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.page-info {
-  font-weight: bold;
-  color: #003366;
-}
-.input-icon {
+/* ==============================
+   INPUT CON ÍCONO
+============================== */
+.input-icon-re {
   position: relative;
-  width: 100%;
+  width: 100%;              /* ⬅️ contenedor al 100% */
 }
 
-.icon-input {
+.icon-input-re {
   position: absolute;
   left: 10px;
-  top: 50%;              /* coloca el icono a la mitad del contenedor */
-  transform: translateY(-50%);  /* ajusta su centro */
-  font-size: 18px;        /* ajusta el tamaño del icono si es necesario */
-  color: #555;
-  pointer-events: none;   /* permite escribir sin problemas */
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: #0f0101;
+  pointer-events: none;
 }
 
-.input-icon input[type="text"] {
-  padding-left: 35px;     /* deja espacio para el icono */
-  height: 35px;           /* ajusta altura del input si quieres más grande */
-  width: 100%;
-  box-sizing: border-box;
-}
-.input-icon input::placeholder {
-  color: #aaa;
+/* ⬅️ AQUÍ AGRANDAMOS EL INPUT Y DAMOS ESPACIO AL ICONO */
+.input-icon-re input {
+  width: 100%;                               /* todo el ancho */
+  padding: 10px 14px 10px 40px;              /* más espacio a la izquierda por el ícono */
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
 }
 
-.input-icon input:focus {
+.input-icon-re input::placeholder {
+   color: #aaa;
+}
+
+.input-icon-re input:focus {
   border-color: #007bff;
   box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
 }
-.input-icon input:focus + .icon-input,
-.input-icon:focus-within .icon-input {
-  color: #0056b3;
+
+/* ==========================
+   🔹 BUSCADOR Y PAGINACIÓN
+========================== */
+.input-busqueda {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  width: 250px;
+  outline: none;
 }
+
+.input-busqueda:focus {
+  border-color: #003366;
+  box-shadow: 0 0 5px rgba(0, 51, 102, 0.4);
+}
+
+.select-filtro {
+  width: 140px;          /* 👉 Tamaño fijo: AJÚSTALO si lo quieres más pequeño */
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  height: 32px;
+  white-space: nowrap;    /* 👉 Evita que el texto se rompa */
+  overflow: hidden;       /* 👉 Oculta texto largo */
+  text-overflow: ellipsis; /* 👉 Muestra "..." si se pasa */
+}
+
+.select-filtro:hover {
+  border-color: #0056a6;
+}
+
+
+
+.btn-excel-importar {
+  background-color: #007bff;
+}
+
+.btn-excel-exportar:hover {
+  background-color: #218838;
+}
+
+.btn-excel-importar:hover {
+  background-color: #0069d9;
+}
+
+.btn-excel-importar input {
+  display: none;
+}
+
+.importar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nombre-archivo {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* ==========================
+   🔹 TOOLTIP (HOVER ICONOS)
+========================== */
+button[title] {
+  position: relative;
+}
+
+button[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #003366;
+  color: #fff;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0.9;
+}
+/* ==========================
+   🔹 MODO RESPONSIVO
+========================== */
+
+/* 📱 Para pantallas pequeñas */
+@media (max-width: 768px) {
+
+  .cards-grid {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .modal-tabla {
+    width: 95%;
+    max-width: 100%;
+    padding: 10px;
+  }
+
+  .tabla-elegante th, 
+  .tabla-elegante td {
+    font-size: 13px;
+    padding: 8px;
+  }
+
+  .acciones-excel {
+    flex-direction: column;
+    align-items: flex-start;
+    transform: none;
+  }
+
+  .btn-excel-exportar,
+  .btn-excel-importar {
+    width: 100%;
+  }
+
+  .input-busqueda,
+  .select-filtro {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+/* 💻 Para pantallas medianas */
+@media (max-width: 1024px) {
+  .modal-tabla {
+    max-width: 90%;
+  }
+
+  .tabla-elegante th, 
+  .tabla-elegante td {
+    font-size: 14px;
+  }
+}
+/* ===== CARGADOR ===== */
+.overlay-carga {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 4000;
+  font-size: 18px;
+  color: #003366;
+  font-weight: 600;
+  transition: opacity 0.3s ease;
+}
+
+.spinner {
+  border: 5px solid #ddd;
+  border-top: 5px solid #0056a6;
+  border-radius: 50%;
+  width: 55px;
+  height: 55px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+/* ==============================
+   BUSCADOR DE RESPONSABLES
+============================== */
+
+.busqueda-contenedor-resp {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.icono-busqueda-resp {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: #555;
+  pointer-events: none;
+}
+
+.input-busqueda-resp {
+  width: 260px;
+  padding: 10px 12px 10px 40px;   /* espacio para icono */
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  outline: none;
+  font-size: 15px;
+  transition: 0.2s ease;
+}
+
+.input-busqueda-resp:focus {
+  border-color: #0056a6;
+  box-shadow: 0 0 6px rgba(0, 86, 166, 0.4);
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+fieldset {
+  border: 0 !important;
+  padding: 0;
+  margin: 0;
+}
+
+
+.mensaje-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #e74c3c;
+}
+
+.input-icon-re {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon-re-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: #003366;
+}
+
+/* Aplica tanto a input como a select */
+.input-icon-re input,
+.input-icon-re select {
+  width: 100%;
+  padding: 10px 12px 10px 38px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  outline: none;
+}
+
+/* Quitar la flechita fea por defecto y mantener estilo limpio */
+.input-icon-re select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #fff;
+}
+
