@@ -2,15 +2,14 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FaHome,
-  FaPlusCircle,
+  FaClipboardList,
   FaUserTie,
   FaBoxOpen,
   FaHistory,
   FaBuilding,
   FaFileAlt,
-  FaTools,
   FaSignOutAlt,
-  FaPowerOff,
+  FaTrashAlt,
 } from "react-icons/fa";
 import "../styles/Sidebar.css";
 import logoEPESPO from "../assets/logo1_epespo.jpeg";
@@ -19,27 +18,24 @@ import axiosClient from "../api/axiosClient";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-import { esLector } from "../utils/permisos";
-
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const lector = esLector();
 
   const [cerrando, setCerrando] = useState(false);
   const menuItems = [
     { name: "Inicio", icon: <FaHome />, route: "/dashboard" },
-    { name: "Agregar Bien", icon: <FaPlusCircle />, route: "/agregar-producto" },
+    { name: "Bienes", icon: <FaBoxOpen />, route: "/agregar-producto" },
     { name: "Responsable", icon: <FaUserTie />, route: "/responsable" },
-    { name: "Asignación", icon: <FaBoxOpen />, route: "/asignacion" },
+    { name: "Asignación", icon: <FaClipboardList />, route: "/asignacion" },
     { name: "Historial", icon: <FaHistory />, route: "/historial" },
     { name: "Departamento", icon: <FaBuilding />, route: "/departamento" },
-{ name: "Dar baja", icon: <FaPowerOff />, route: "/dar-baja", ocultarLector: true },
-    { name: "Actas", icon: <FaFileAlt />, route: "/actas", ocultarLector: true },
-    { name: "Ajustes", icon: <FaTools />, route: "/ajustes", ocultarLector: true },
+{ name: "Dar baja", icon: <FaTrashAlt />, route: "/dar-baja" },
+    { name: "Actas", icon: <FaFileAlt />, route: "/actas"},
+   // { name: "Ajustes", icon: <FaTools />, route: "/ajustes" },
   ];
 
-  const menuVisible = menuItems.filter((item) => !(lector && item.ocultarLector));
+  const menuVisible = menuItems;
 
   const handleLogout = async () => {
     if (cerrando) return;

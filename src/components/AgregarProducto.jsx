@@ -20,8 +20,9 @@ import {
   FaMapMarkerAlt,
   FaEdit,
   FaBarcode,
+  FaPlus,
   FaInfoCircle,} from "react-icons/fa";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { QRCodeCanvas } from "qrcode.react";
 import {
@@ -67,6 +68,7 @@ const CAMPOS_CATEGORIA = {
 const COLUMNAS_POR_CATEGORIA = {
   "Equipo de Computo": [
     "codigo",
+    "codigo_anterior",
     "nombre",
     "descripcion",
     "marca",
@@ -78,6 +80,7 @@ const COLUMNAS_POR_CATEGORIA = {
   ],
   "Equipo de Oficina": [
     "codigo",
+    "codigo_anterior",
     "nombre",
     "descripcion",
     "marca",
@@ -89,6 +92,7 @@ const COLUMNAS_POR_CATEGORIA = {
   ],
   "Muebles y Enseres": [
     "codigo",
+    "codigo_anterior",
     "nombre",
     "descripcion",
     "dimensiones",
@@ -99,6 +103,7 @@ const COLUMNAS_POR_CATEGORIA = {
   ],
   "Instalaciones, Maquinarias y Herramientas": [
     "codigo",
+    "codigo_anterior",
     "nombre",
     "descripcion",
     "fecha_ingreso",
@@ -155,6 +160,8 @@ const obtenerNombreHojaExcel = (categoriaTabla) => {
 };
 const obtenerEtiquetaColumna = (col) => {
   switch (col) {
+    case "codigo_anterior":
+  return "Codigo Antiguo";
     case "fecha_ingreso":
       return "Fecha ingreso";
     case "ubicacion_id":
@@ -186,7 +193,11 @@ const generarCodigoConSecuencia = (categoriaSeleccionada, secuencia) => {
 };
 const AgregarProducto = () => {
   const [categoria, setCategoria] = useState("");
-  const [producto, setProducto] = useState({ es_donado: false });
+  const [producto, setProducto] = useState({
+  es_donado: false,
+  codigo_anterior: "",
+});
+
   const [productos, setProductos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const PRODUCTOS_POR_PAGINA = 5;
@@ -216,17 +227,21 @@ const AgregarProducto = () => {
   const lector = esLector();
   const { agregarNotificacion } = useNotificaciones();
   const [errores, setErrores] = useState({});
+  const [tieneCodigoAnterior, setTieneCodigoAnterior] = useState(false);
+
 
   useEffect(() => {
     fetchProductos();      
     fetchDepartamentos(); 
   }, []);
+  
   const fetchProductos = async () => {
     try {
       const { data } = await axiosCliente.get("/productos");
       setProductos(data);
     } catch (error) {
       console.error("Error al cargar productos", error);
+      toast.error("Error al cargar productos");
     }
   };
   const fetchDepartamentos = async () => {
@@ -288,19 +303,21 @@ const AgregarProducto = () => {
       return;
     }
     const nuevosErrores = {};
-    const prod = {
-      ...producto,
-      nombre: normalizarTexto(producto.nombre),
-      descripcion: normalizarTexto(producto.descripcion),
-      marca: normalizarTexto(producto.marca),
-      modelo: normalizarTexto(producto.modelo),
-      numero_serie: normalizarTexto(producto.numero_serie),
-      dimensiones: normalizarTexto(producto.dimensiones),
-      color: normalizarTexto(producto.color),
-      fecha_ingreso: producto.fecha_ingreso,
-      ubicacion_id: producto.ubicacion_id,
-      es_donado: !!producto.es_donado,
-    };
+ const prod = {
+  ...producto,
+  codigo: producto.codigo, // 🔥 CLAVE
+  nombre: normalizarTexto(producto.nombre),
+  descripcion: normalizarTexto(producto.descripcion),
+  marca: normalizarTexto(producto.marca),
+  modelo: normalizarTexto(producto.modelo),
+  numero_serie: normalizarTexto(producto.numero_serie),
+  dimensiones: normalizarTexto(producto.dimensiones),
+  color: normalizarTexto(producto.color),
+  fecha_ingreso: producto.fecha_ingreso,
+  ubicacion_id: producto.ubicacion_id,
+  es_donado: !!producto.es_donado,
+};
+
     const errorCategoria = validarCategoria(categoria);
     if (errorCategoria) nuevosErrores.categoria = errorCategoria;
     const errorNombre = validarTexto(prod.nombre, "nombre");
@@ -335,6 +352,23 @@ const AgregarProducto = () => {
       nuevosErrores.ubicacion_id =
         "Debe seleccionar la ubicación / departamento";
     }
+      if (tieneCodigoAnterior) {
+  if (!producto.codigo_anterior?.trim()) {
+    nuevosErrores.codigo_anterior = "Debe ingresar el código anterior";
+  } else {
+    const existe = productos.some(
+      (p) =>
+        p.codigo_anterior?.toLowerCase() ===
+          producto.codigo_anterior.toLowerCase() &&
+        p.id !== editarId
+    );
+
+    if (existe) {
+      nuevosErrores.codigo_anterior =
+        "Este código anterior ya está registrado";
+    }
+  }
+}
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
       return;
@@ -342,15 +376,28 @@ const AgregarProducto = () => {
     setErrores({});
     try {
       setCargando(true);
-      const nuevoProducto = {
-        ...prod,
-        categoria,
-        fecha_ingreso: prod.fecha_ingreso,
-        ubicacion_id: prod.ubicacion_id ? Number(prod.ubicacion_id) : "",
-        es_donado: !!prod.es_donado,
-      };
+const nuevoProducto = {
+  ...prod,
+  categoria,
+  fecha_ingreso: prod.fecha_ingreso,
+  ubicacion_id: prod.ubicacion_id ? Number(prod.ubicacion_id) : "",
+  es_donado: !!prod.es_donado,
+  codigo_anterior: tieneCodigoAnterior
+    ? producto.codigo_anterior
+    : null,
+};
+
+
+if (editarId && admin && producto.codigo) {
+  nuevoProducto.codigo = producto.codigo;
+}
+
       if (!editarId) {
-        nuevoProducto.codigo = generarCodigo(categoria);
+        if (tieneCodigoAnterior) {
+          nuevoProducto.codigo = producto.codigo_anterior;
+        } else {
+          nuevoProducto.codigo = generarCodigo(categoria);
+        }
         await axiosCliente.post("/productos", nuevoProducto);
         toast.success("Producto agregado con éxito ");
         agregarNotificacion({
@@ -367,26 +414,35 @@ const AgregarProducto = () => {
           fecha: new Date().toISOString(),
         });
       }
-      await fetchProductos();
-      setProducto({ es_donado: false });
+  const { data: productosActualizados } = await axiosCliente.get("/productos");
+
+setProductos(productosActualizados);
+
+// ...existing code...
+if (categoriaTabla) {
+  setTablaDatos(
+    productosActualizados.filter(
+      (p) => p.categoria === categoriaTabla
+    )
+  );
+} else {
+  setTablaDatos(productosActualizados);
+}
+
+      setProducto({ es_donado: false, codigo_anterior: "" });
+setTieneCodigoAnterior(false);
+
       setCategoria("");
       setMostrarModalProducto(false);
       setEditarId(null);
-    } catch (error) {
-  console.error("ERROR COMPLETO:", error.response?.data || error);
-
-  if (error.response && error.response.data && error.response.data.errors) {
-    const errores = error.response.data.errors;
-    Object.values(errores).forEach((e) => {
-      toast.error(e[0]);
-    });
-  } else {
-    toast.error("Error al guardar producto");
-  }
-}
+    }
+     
 finally {
       setCargando(false);
     }
+
+
+  
   };
   const renderCamposCategoria = () =>
     CAMPOS_CATEGORIA[categoria]?.map((campo, i) => {
@@ -412,19 +468,22 @@ finally {
         </div>
       );
     });
-  const editarProducto = (item) => {
-    setProducto({
-      ...item,
-      fecha_ingreso: item.fecha_ingreso ? item.fecha_ingreso.slice(0, 10) : "",
-      ubicacion_id: item.ubicacion_id || "",
-      es_donado: !!item.es_donado,
-    });
-    setCategoria(item.categoria);
-    setEditarId(item.id);
-    setMostrarModalProducto(true);
-    setMostrarModalTabla(false);
-    setErrores({});
-  };
+const editarProducto = (item) => {
+  setProducto({
+    ...item,
+    fecha_ingreso: item.fecha_ingreso ? item.fecha_ingreso.slice(0, 10) : "",
+    ubicacion_id: item.ubicacion_id || "",
+    es_donado: !!item.es_donado,
+  });
+
+  setTieneCodigoAnterior(!!item.codigo_anterior);
+  setCategoria(item.categoria);
+  setEditarId(item.id);
+  setMostrarModalProducto(true);
+  setMostrarModalTabla(false);
+  setErrores({});
+};
+
   const abrirModalTabla = async (cat) => {
     setCategoriaTabla(cat);
     setMostrarModalTabla(true);
@@ -486,10 +545,10 @@ finally {
   const totalPaginas = Math.ceil(
     productosFiltrados.length / PRODUCTOS_POR_PAGINA
   );
-  const paginas =
-    totalPaginas > 0
-      ? Array.from({ length: totalPaginas }, (_, i) => i + 1)
-      : [];
+ // const paginas =
+   // totalPaginas > 0
+     // ? Array.from({ length: totalPaginas }, (_, i) => i + 1)
+      //: [];
   const totalPaginasImpresion = Math.ceil(
     tablaDatos.length / PRODUCTOS_POR_PAGINA_IMPRESION
   );
@@ -644,8 +703,10 @@ finally {
         prod.numero_serie = normalizarTexto(prod.numero_serie);
         prod.dimensiones = normalizarTexto(prod.dimensiones);
         prod.color = normalizarTexto(prod.color);
+        // Normalizar código anterior si existe en la plantilla/archivo
+        prod.codigo_anterior = prod.codigo_anterior ? normalizarTexto(prod.codigo_anterior) : "";
         if (validarTexto(prod.nombre, "nombre")) continue;
-        if (validarTexto(prod.descripcion, "descripción")) continue;
+        if (validarTexto(prod.descripcion, "descripción")) continue; 
 
         if (CATEGORIAS_CON_SERIE.includes(categoriaTabla)) {
           if (validarTexto(prod.marca, "marca")) continue;
@@ -683,13 +744,31 @@ finally {
         const codigoGenerado = generarCodigoConSecuencia(categoriaTabla, secuencia);
         secuencia++;
 
+        // Si el excel incluye un codigo_anterior válido para la categoría y no existe en la BD, úsalo como código final
+        let codigoFinal = codigoGenerado;
+        if (prod.codigo_anterior && prod.codigo_anterior.trim() !== "") {
+          try {
+const patron = new RegExp(
+  `^${PREFIJOS[categoriaTabla]}-\\d{4}-\\d{3}$`
+);
+            if (patron.test(prod.codigo_anterior)) {
+              const existeCodigo = productos.some((p) => p.codigo === prod.codigo_anterior);
+              if (!existeCodigo) {
+                codigoFinal = prod.codigo_anterior;
+              }
+            }
+          } catch (e) {
+            // Si algo falla, se usa el código generado
+          }
+        }
+
         const nuevoProducto = {
           ...prod,
-          codigo: codigoGenerado,
+          codigo: codigoFinal,
           categoria: categoriaTabla,
           estado: "Activo",
           es_donado: !!prod.es_donado,
-        };
+        }; 
 
         await axiosCliente.post("/productos", nuevoProducto);
       }
@@ -791,6 +870,12 @@ finally {
       yText += 22;
       ctx.fillText(ubicacionTexto, tempCanvas.width / 2, yText);
 
+      // Si existe código anterior, mostrarlo en la etiqueta inferior
+      if (productoQR.codigo_anterior) {
+        yText += 22;
+        ctx.fillText(`Código Antiguo: ${productoQR.codigo_anterior}`, tempCanvas.width / 2, yText);
+      }
+
       const enlace = document.createElement("a");
       enlace.href = tempCanvas.toDataURL("image/png");
       enlace.download = `${(productoQR.nombre || "producto").replace(
@@ -807,13 +892,15 @@ finally {
       toast.error("No se pudo cargar el logo de EPESPO ");
     };
   };
-  const cerrarModalProducto = () => {
-    setMostrarModalProducto(false);
-    setProducto({ es_donado: false });
-    setCategoria("");
-    setEditarId(null);
-    setErrores({});
-  };
+const cerrarModalProducto = () => {
+  setMostrarModalProducto(false);
+  setProducto({ es_donado: false, codigo_anterior: "" });
+  setCategoria("");
+  setEditarId(null);
+  setTieneCodigoAnterior(false);
+  setErrores({});
+};
+
   const abrirModalImpresion = () => {
     if (tablaDatos.length === 0) {
       toast.info("No hay productos para imprimir ");
@@ -864,10 +951,21 @@ finally {
 
     try {
       const ids = productosSeleccionImpresion.map((p) => p.id);
+      // Enviar también los productos seleccionados (incluye codigo_anterior) para que el backend pueda usarlos en la plantilla
+      const productosParaExportar = productosSeleccionImpresion.map((p) => ({
+        id: p.id,
+        codigo: p.codigo,
+        codigo_anterior: p.codigo_anterior || null,
+        nombre: p.nombre,
+        descripcion: p.descripcion,
+        categoria: p.categoria,
+        fecha_ingreso: p.fecha_ingreso,
+        ubicacion_id: p.ubicacion_id,
+      }));
 
       const response = await axiosCliente.post(
         "/productos/exportar-word",
-        { ids },
+        { ids, productos: productosParaExportar },
         { responseType: "blob" }
       );
 
@@ -933,16 +1031,7 @@ finally {
         <div className="content">
           <div className="cards-grid">
             <div className="cards-row">
-              {admin && (
-                <div
-                  className="card clickable"
-                  onClick={() => setMostrarModalProducto(true)}
-                >
-                  <FaBoxOpen className="card-icon" />
-                  <h2 className="card-title">Agregar Bien</h2>
-                  <p className="card-subtitle">Registrar un nuevo Bien</p>
-                </div>
-              )}
+         
               <div
                 className="card clickable"
                 onClick={() => abrirModalTabla("Equipo de Computo")}
@@ -984,8 +1073,23 @@ finally {
               </div>
             </div>
           </div>
+          
         </div>
+{admin && (
+  <button
+    className="fab-agregar"
+    onClick={() => setMostrarModalProducto(true)}
+    aria-label="Agregar nuevo bien"
+    title="Agregar nuevo bien"
+  >
+    <FaPlus />
+    <span className="fab-tooltip">Agregar nuevo bien</span>
+  </button>
+)}
+
+
       </div>
+      
       {mostrarModalProducto && (
         <div className="modal-overlay-pro" onClick={cerrarModalProducto}>
           <div
@@ -1024,6 +1128,8 @@ finally {
 
                 {categoria && (
                   <>
+         
+
                     <div className="form-group-pro">
                       <label>Nombre de Producto</label>
                       <div
@@ -1149,6 +1255,72 @@ finally {
                         donación.
                       </small>
                     </div>
+{!editarId && (
+  <>
+    <div className="form-group-pro-s form-check-donado">
+      <label className="label-checkbox-donado">
+        <input
+          type="checkbox"
+          checked={tieneCodigoAnterior}
+          onChange={(e) => {
+            setTieneCodigoAnterior(e.target.checked);
+            if (!e.target.checked) {
+              setProducto((prev) => ({
+                ...prev,
+                codigo_anterior: "",
+              }));
+            }
+          }}
+        />
+        ¿Tiene código anterior?
+      </label>
+      <small className="help-text-donado">
+        Marca esta opción si el bien ya tenía un código previo.
+      </small>
+    </div>
+
+    {tieneCodigoAnterior && (
+      <div className="form-group-pro">
+        <label>Codigo Anterior</label>
+        <div
+          className={`input-icon-pro ${
+            errores.codigo_anterior ? "input-error" : ""
+          }`}
+        >
+          
+          <input
+            type="text"
+            name="codigo_anterior"
+            value={producto.codigo_anterior || ""}
+            onChange={handleChange}
+            placeholder="Ingrese el código anterior"
+           pattern={categoria 
+  ? `^${PREFIJOS[categoria]}-\\d{4}-\\d{3}$` 
+  : undefined
+}
+        title={
+  categoria
+    ? `Formato: ${PREFIJOS[categoria]}-AAAA-001`
+    : "Seleccione la categoría para ver el formato"
+}
+          />
+          <small className="help-text-codigo">
+            {categoria
+              ? `Formato: ${PREFIJOS[categoria]}-${new Date().getFullYear()}-NNN — Ej: ${PREFIJOS[categoria]}-${new Date().getFullYear()}-001`
+              : "Selecciona la categoría para ver el formato ejemplo."}
+          </small>
+        </div>
+        {errores.codigo_anterior && (
+          <span className="mensaje-error">
+            {errores.codigo_anterior}
+          </span>
+        )}
+      </div>
+    )}
+  </>
+)}
+
+
                     {renderCamposCategoria()}
                   </>
                 )}
@@ -1320,6 +1492,14 @@ finally {
                                           </span>
                                         )}
                                       </>
+                                    ) : col === "codigo_anterior" ? (
+                                      <div className="td-center">
+                                        {item.codigo_anterior && item.codigo_anterior.trim() !== "" ? (
+                                          <span className="codigo-anterior">{item.codigo_anterior}</span>
+                                        ) : (
+                                          <span className="sin-codigo">—</span>
+                                        )}
+                                      </div>
                                     ) : (
                                       item[col]
                                     )}
@@ -1480,6 +1660,7 @@ finally {
                 <thead>
                   <tr>
                     <th>CÓDIGO</th>
+                    <th>CÓDIGO ANTIGUO</th>
                     <th>PRODUCTO</th>
                     <th>DESCRIPCIÓN</th>
                     <th>DETALLES</th>
@@ -1496,6 +1677,13 @@ finally {
                       return (
                         <tr key={p.id}>
                           <td>{p.codigo}</td>
+                          <td className="td-center">
+                            {p.codigo_anterior && p.codigo_anterior.trim() !== "" ? (
+                              <span className="codigo-anterior">{p.codigo_anterior}</span>
+                            ) : (
+                              <span className="sin-codigo">—</span>
+                            )}
+                          </td>
                           <td>
                             {p.nombre}
                             {p.es_donado && (
@@ -1634,6 +1822,9 @@ finally {
               <strong>Código:</strong> {productoDetalle.codigo}
             </p>
             <p>
+              <strong>Código anterior:</strong> {productoDetalle.codigo_anterior || "—"}
+            </p>
+            <p>
               <strong>Descripción:</strong>{" "}
               {productoDetalle.descripcion || "Sin descripción"}
             </p>
@@ -1725,7 +1916,7 @@ finally {
                 <QRCodeCanvas
                   value={`📦 Producto: ${productoQR.nombre}
 🔖 Código: ${productoQR.codigo}
-📂 Categoría: ${productoQR.categoria}
+${productoQR.codigo_anterior ? `🧾 Código Antiguo: ${productoQR.codigo_anterior}\n` : ""}📂 Categoría: ${productoQR.categoria}
 📍 Ubicación: ${productoQR.ubicacion_texto}
 📝 Descripción: ${productoQR.descripcion}`}
                   size={200}
@@ -1743,6 +1934,9 @@ finally {
                   {productoQR.categoria || "Sin categoría"}
                 </p>
                 <p className="qr-product-ubic">{productoQR.ubicacion_texto}</p>
+                {productoQR.codigo_anterior && (
+                  <p className="qr-product-codigo-ant">Código antiguo: {productoQR.codigo_anterior}</p>
+                )}
               </div>
             </div>
 
@@ -1760,12 +1954,7 @@ finally {
           </div>
         </div>
       )}
-      <ToastContainer
-        position="top-right"
-        autoClose={2000}
-        hideProgressBar
-        closeButton={false}
-      />
+
     </div>
   );
 };

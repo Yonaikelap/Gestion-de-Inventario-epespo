@@ -193,6 +193,27 @@
   border: 1px solid #ccc;
 }
 
+/* Estilos para valores vacíos y códigos anteriores */
+.td-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+}
+
+.sin-codigo {
+  color: #6b7280; /* gris tenue */
+  font-style: italic;
+  font-weight: 500;
+  background-color: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  box-shadow: inset 0 -1px 0 rgba(0,0,0,0.03);
+}
+
+
+
 .tabla-elegante td:last-child {
   display: flex;
   justify-content: center;
@@ -821,4 +842,48 @@ button[title]:hover::after {
 .tabla-elegante td .donacion-badge {
   font-size: 10px;
   padding: 1px 6px;
+}
+
+.fab-agregar {
+  position: fixed;
+  bottom: 60px;
+    left: 1150px; 
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #003366; /* color EPESPO */
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+
+.fab-tooltip {
+  position: absolute;
+  right: 70px;
+  background-color: #003366;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(5px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fab-agregar:hover .fab-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }

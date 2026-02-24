@@ -120,12 +120,30 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
+/* make sure sweetalert2 dialogs show above any custom modals/overlays */
+.swal2-container {
+  z-index: 3000 !important;
+}
+
 .modal-title-asi {
   font-size: 26px;
   font-weight: bold;
   text-align: center;
   margin-bottom: 25px;
   color: #000408;
+}
+
+/* estilos para filas anuladas */
+.fila-anulada {
+  background-color: #ffeaea !important; /* rojo claro */
+  color: #6b6b6b;
+}
+
+/* desactivar acciones visualmente y bloquear clicks */
+.fila-anulada .btn-accion {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .modal-actions {

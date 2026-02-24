@@ -37,13 +37,17 @@ const admin = esAdmin();
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState(null);
 
   const LIMITE_MB = 10;
+useEffect(() => {
+  fetchActas();
+}, []);
 
-  useEffect(() => {
-    fetchActas();
-    return () => {
-      if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
-    };
-  }, []);
+useEffect(() => {
+  return () => {
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+    }
+  };
+}, [pdfPreviewUrl]);
 
   const fetchActas = async () => {
     try {
@@ -132,32 +136,49 @@ const admin = esAdmin();
       toast.error("No se pudo descargar el PDF ");
     }
   };
-  const actasFiltradas = actas.filter((a) => {
-    const texto = busqueda.toLowerCase();
+  const actasFiltradas = (() => {
+    const lista = actas.filter((a) => {
+      const texto = busqueda.toLowerCase();
 
-    const nombreResponsable = obtenerNombreResponsable(a).toLowerCase();
-    const fecha = a.fecha_creacion || "";
-    const codigo = a.codigo?.toLowerCase() || "";
-    const tipoActa = esActaRecepcion(a) ? "Recepción" : "Asignación";
+      const nombreResponsable = obtenerNombreResponsable(a).toLowerCase();
+      const fecha = a.fecha_creacion || "";
+      const codigo = a.codigo?.toLowerCase() || "";
+      const tipoActa = esActaRecepcion(a) ? "Recepción" : "Asignación";
 
-    const coincideTexto =
-      nombreResponsable.includes(texto) ||
-      (fecha || "").toLowerCase().includes(texto) ||
-      codigo.includes(texto) ||
-      tipoActa.toLowerCase().includes(texto);
+      const coincideTexto =
+        nombreResponsable.includes(texto) ||
+        (fecha || "").toLowerCase().includes(texto) ||
+        codigo.includes(texto) ||
+        tipoActa.toLowerCase().includes(texto);
 
-    const coincideResponsable = filtroResponsable
-      ? obtenerNombreResponsable(a) === filtroResponsable
-      : true;
+      const coincideResponsable = filtroResponsable
+        ? obtenerNombreResponsable(a) === filtroResponsable
+        : true;
 
-    const coincideTipo = filtroTipo ? tipoActa === filtroTipo : true;
+      const coincideTipo = filtroTipo ? tipoActa === filtroTipo : true;
 
-    let coincideFechas = true;
-    if (fechaDesde && fecha < fechaDesde) coincideFechas = false;
-    if (fechaHasta && fecha > fechaHasta) coincideFechas = false;
+      let coincideFechas = true;
+      if (fechaDesde && fecha < fechaDesde) coincideFechas = false;
+      if (fechaHasta && fecha > fechaHasta) coincideFechas = false;
 
-    return coincideTexto && coincideResponsable && coincideTipo && coincideFechas;
-  });
+      return coincideTexto && coincideResponsable && coincideTipo && coincideFechas;
+    });
+
+    // ordenar dejando las anuladas al final
+    lista.sort((x, y) => {
+      const xAn =
+        (x.asignaciones && x.asignaciones.some((z) => z.activo === false)) ||
+        (x.recepciones && x.recepciones.some((z) => z.activo === false));
+      const yAn =
+        (y.asignaciones && y.asignaciones.some((z) => z.activo === false)) ||
+        (y.recepciones && y.recepciones.some((z) => z.activo === false));
+      if (xAn && !yAn) return 1;
+      if (yAn && !xAn) return -1;
+      return 0;
+    });
+
+    return lista;
+  })();
 
   const totalActas = actasFiltradas.length;
   const totalPaginas = totalActas === 0 ? 1 : Math.ceil(totalActas / itemsPorPagina);
@@ -387,9 +408,20 @@ const admin = esAdmin();
                         const esRecepcion = esActaRecepcion(acta);
                         const tipoActa = esRecepcion ? "Recepción" : "Asignación";
 
+                        const anulada =
+                          (acta.asignaciones && acta.asignaciones.some((x) => x.activo === false)) ||
+                          (acta.recepciones && acta.recepciones.some((x) => x.activo === false));
+
                         return (
-                          <tr key={acta.id}>
-                            <td>{tipoActa}</td>
+                          <tr key={acta.id} className={anulada ? "fila-anulada" : ""}>
+                            <td>
+                              {tipoActa}
+                              {anulada && (
+                                <span className="badge-estado inactivo" style={{ marginLeft: 6 }}>
+                                  Anulada
+                                </span>
+                              )}
+                            </td>
                             <td>{acta.fecha_creacion}</td>
                             <td>{acta.codigo}</td>
                             <td>{nombreResponsable || "—"}</td>
@@ -413,7 +445,7 @@ const admin = esAdmin();
                                 className="btn-accion btn-word"
                                 onClick={() => descargarActaWord(acta.id, acta.codigo)}
                                 title="Descargar en Word"
-                                disabled={subiendoPdf}
+                                disabled={subiendoPdf || anulada}
                               >
                                 <FaFileWord />
                               </button>
@@ -422,7 +454,7 @@ const admin = esAdmin();
     className="btn-accion btn-upload"
     onClick={() => abrirModalSubirPdf(acta)}
     title="Subir PDF firmado"
-    disabled={subiendoPdf}
+    disabled={subiendoPdf || anulada}
   >
     <FaUpload />
   </button>
@@ -434,7 +466,7 @@ const admin = esAdmin();
                                     className="btn-accion btn-pdf"
                                     onClick={() => descargarPdfFirmado(acta.id, acta.codigo)}
                                     title={`Descargar PDF firmado (${tipoActa})`}
-                                    disabled={subiendoPdf}
+                                    disabled={subiendoPdf || anulada}
                                   >
                                     <FaFilePdf />
                                   </button>

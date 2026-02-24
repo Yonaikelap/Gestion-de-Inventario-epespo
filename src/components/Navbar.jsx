@@ -30,7 +30,7 @@ const Navbar = () => {
       } else if (user.rol === "lector") {
         setDatosUsuario({
           nombre: user.nombre || "Lector",
-          rolTexto: "Lector",
+          rolTexto: "Directora",
         });
       } else {
         setDatosUsuario({

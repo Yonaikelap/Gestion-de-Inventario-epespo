@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FaBoxOpen, FaBriefcase, FaCalendarAlt, FaClipboardList, FaEdit, FaInfoCircle, FaSearch, FaTrash, FaUser, FaUsers } from "react-icons/fa";
+import { FaBoxOpen, FaBriefcase, FaCalendarAlt, FaClipboardList, FaInfoCircle, FaSearch, FaTrash, FaUser, FaUsers } from "react-icons/fa";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
@@ -79,15 +79,13 @@ const Asignacion = () => {
   const [mostrarDetalles, setMostrarDetalles] = useState(false);
   const [mostrarModalRecepcion, setMostrarModalRecepcion] = useState(false);
 
-  const [editId, setEditId] = useState(null);
-  const [editRecepcionId, setEditRecepcionId] = useState(null);
-  const [categoriaEditando, setCategoriaEditando] = useState(null);
-  const [categoriaEditandoRecep, setCategoriaEditandoRecep] = useState(null);
+  // editing disabled: only new assignments/recepciones can be created
 
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const [busqueda, setBusqueda] = useState("");
+  const [busquedaProd, setBusquedaProd] = useState("");
   const [paginaAsignacionesActual, setPaginaAsignacionesActual] = useState(1);
   const asignacionesPorPagina = 5;
 
@@ -113,7 +111,7 @@ const Asignacion = () => {
   const admin = esAdmin();
   const lector = esLector();
 
-  const [modoSubmodal, setModoSubmodal] = useState("asignacion");
+  const [modoSubmodal, setModoSubmodal] = useState("asignacion"); // usado para distinguir entre selección de bienes en asignación/recepción
   const [bienesDisponiblesRecep, setBienesDisponiblesRecep] = useState({});
 
   const mapaOcupados = useMemo(() => {
@@ -170,7 +168,8 @@ const Asignacion = () => {
   const fetchAsignaciones = async () => {
     try {
       setCargando(true);
-      const { data } = await axiosClient.get("/asignaciones");
+      // pedir también las anuladas para que la tabla pueda resaltarlas
+      const { data } = await axiosClient.get("/asignaciones?mostrarAnuladas=true");
       setAsignaciones(data || []);
       setPaginaAsignacionesActual(1);
     } catch {
@@ -183,7 +182,8 @@ const Asignacion = () => {
   const fetchRecepciones = async () => {
     try {
       setCargando(true);
-      const { data } = await axiosClient.get("/recepciones");
+      // igualmente solicitamos las recepciones anuladas
+      const { data } = await axiosClient.get("/recepciones?mostrarAnuladas=true");
       setRecepciones(data || []);
       setPaginaRecepcionesActual(1);
     } catch {
@@ -199,6 +199,7 @@ const Asignacion = () => {
       setAsignacionesActuales(data || []);
     } catch (error) {
       console.error("Error al cargar asignaciones actuales", error?.response?.data || error?.message);
+      toast.error("Error al cargar asignaciones actuales");
     }
   };
 
@@ -237,9 +238,43 @@ const Asignacion = () => {
     setPaginaRecepcionesActual(1);
   }, [busquedaRecep, filtroCategoriaRecep, filtroResponsableRecep]);
 
-  const opcionesResponsableAsign = useMemo(() => {
+  useEffect(() => {
+    setPaginaProductosActual(1);
+  }, [busquedaProd, categoriaSeleccionada]);
+
+  // agrupamos registros que pertenecen a la misma acción de asignación
+  // (misma persona, área, fecha y estado) porque el backend guarda
+  // una fila por categoría. Para el usuario debe verse como un único
+  // registro con productos combinados.
+  const asignacionesAgrupadas = useMemo(() => {
     const map = new Map();
     (asignaciones || []).forEach((a) => {
+      const key = `${a.responsable_id}-${a.area_id}-${a.fecha_asignacion}-${a.activo}`;
+      if (!map.has(key)) {
+        // clonar el objeto para no mutar el estado original
+        map.set(key, {
+          ...a,
+          productos: [...(a.productos || [])],
+          originalIds: [a.id],
+        });
+      } else {
+        const existing = map.get(key);
+        existing.productos = [...existing.productos, ...(a.productos || [])];
+        existing.originalIds.push(a.id);
+        // eliminar duplicados por id
+        const unique = new Map();
+        existing.productos.forEach((p) => {
+          if (p && p.id != null) unique.set(p.id, p);
+        });
+        existing.productos = Array.from(unique.values());
+      }
+    });
+    return Array.from(map.values());
+  }, [asignaciones]);
+
+  const opcionesResponsableAsign = useMemo(() => {
+    const map = new Map();
+    (asignacionesAgrupadas || []).forEach((a) => {
       if (a?.responsable_id && a?.responsable) {
         map.set(String(a.responsable_id), a.responsable);
       }
@@ -248,22 +283,22 @@ const Asignacion = () => {
     return [...map.entries()]
       .map(([id, r]) => ({ id, label: nombreCompleto(r) }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [asignaciones]);
+  }, [asignacionesAgrupadas]);
 
   const opcionesCategoriaAsign = useMemo(() => {
     const set = new Set();
-    (asignaciones || []).forEach((a) => {
+    (asignacionesAgrupadas || []).forEach((a) => {
       (a.productos || []).forEach((p) => {
         if (p?.categoria) set.add(p.categoria);
       });
     });
     return [...set].sort((a, b) => a.localeCompare(b));
-  }, [asignaciones]);
+  }, [asignacionesAgrupadas]);
 
   const asignacionesFiltradas = useMemo(() => {
     const texto = (busqueda || "").toLowerCase().trim();
 
-    return (asignaciones || []).filter((a) => {
+    const lista = (asignacionesAgrupadas || []).filter((a) => {
       const respTxt = nombreCompleto(a.responsable).toLowerCase();
 
       const coincideTexto =
@@ -283,7 +318,16 @@ const Asignacion = () => {
 
       return coincideTexto && coincideCategoria && coincideResponsable;
     });
-  }, [asignaciones, busqueda, filtroCategoria, filtroResponsable]);
+
+    // mover anuladas al final
+    lista.sort((x, y) => {
+      if (x.activo === false && y.activo !== false) return 1;
+      if (y.activo === false && x.activo !== false) return -1;
+      return 0;
+    });
+
+    return lista;
+  }, [asignacionesAgrupadas, busqueda, filtroCategoria, filtroResponsable]);
 
   const indiceUltimoAsign = paginaAsignacionesActual * asignacionesPorPagina;
   const indicePrimeroAsign = indiceUltimoAsign - asignacionesPorPagina;
@@ -324,7 +368,7 @@ const Asignacion = () => {
   const recepcionesFiltradas = useMemo(() => {
     const texto = (busquedaRecep || "").toLowerCase().trim();
 
-    return (recepciones || []).filter((r) => {
+    const lista = (recepciones || []).filter((r) => {
       const respTxt = nombreCompleto(r.responsable).toLowerCase();
 
       const coincideTexto =
@@ -344,6 +388,14 @@ const Asignacion = () => {
 
       return coincideTexto && coincideCategoria && coincideResponsable;
     });
+
+    lista.sort((x, y) => {
+      if (x.activo === false && y.activo !== false) return 1;
+      if (y.activo === false && x.activo !== false) return -1;
+      return 0;
+    });
+
+    return lista;
   }, [recepciones, busquedaRecep, filtroCategoriaRecep, filtroResponsableRecep]);
 
   const indiceUltimaRecep = paginaRecepcionesActual * recepcionesPorPagina;
@@ -363,7 +415,7 @@ const Asignacion = () => {
     e.preventDefault();
 
     if (lector) {
-      toast.info("Solo lectura: no puedes crear ni editar asignaciones ");
+      toast.info("Solo lectura: no puedes crear asignaciones ");
       return;
     }
 
@@ -373,9 +425,7 @@ const Asignacion = () => {
       asignacion,
       bienesSeleccionados,
       asignaciones,
-      asignacionesActuales,
-      editId,
-      categoriaEditando
+      asignacionesActuales
     );
 
     if (Object.keys(erroresVal).length > 0) {
@@ -387,13 +437,9 @@ const Asignacion = () => {
     setGuardando(true);
 
     try {
-      let categoriasSeleccionadas = Object.keys(bienesSeleccionados).filter(
+      const categoriasSeleccionadas = Object.keys(bienesSeleccionados).filter(
         (cat) => (bienesSeleccionados[cat] || []).length > 0
       );
-
-      if (editId && categoriaEditando) {
-        categoriasSeleccionadas = [categoriaEditando];
-      }
 
       for (const categoria of categoriasSeleccionadas) {
         const productosCategoria = bienesSeleccionados[categoria] || [];
@@ -409,13 +455,7 @@ const Asignacion = () => {
           productos: productosIds,
         };
 
-        let resp;
-        if (editId) {
-          resp = await axiosClient.put(`/asignaciones/${editId}`, payload);
-        } else {
-          resp = await axiosClient.post("/asignaciones", payload);
-        }
-
+        const resp = await axiosClient.post("/asignaciones", payload);
         ultimaAsignacionIdRef.current = resp.data.id;
       }
 
@@ -432,8 +472,6 @@ const Asignacion = () => {
       );
 
       setMostrarModalFormulario(false);
-      setEditId(null);
-      setCategoriaEditando(null);
       setAsignacion({
         responsable_id: "",
         fecha_asignacion: fechaHoy(),
@@ -450,7 +488,7 @@ const Asignacion = () => {
       });
 
       agregarNotificacion({
-        titulo: editId ? "Asignación editada" : "Nueva asignación",
+        titulo: "Nueva asignación",
         mensaje: `Responsable: ${nombreResponsable} | Productos: ${totalProductos}`,
         fecha: new Date().toISOString(),
       });
@@ -504,9 +542,7 @@ const Asignacion = () => {
     const erroresVal = validarRecepcion(
       recepcion,
       bienesSeleccionados,
-      asignacionesActuales,
-      editRecepcionId,
-      categoriaEditandoRecep
+      asignacionesActuales
     );
 
     if (Object.keys(erroresVal).length > 0) {
@@ -519,11 +555,8 @@ const Asignacion = () => {
       (cat) => (bienesSeleccionados[cat] || []).length > 0
     );
 
-    if (editRecepcionId && categoriaEditandoRecep) {
-      categoriasSeleccionadas = [categoriaEditandoRecep];
-    }
 
-    const toastId = toast.loading(editRecepcionId ? "Actualizando recepción..." : "Guardando recepción...");
+    const toastId = toast.loading("Guardando recepción...");
 
     try {
       let baseRecepcionId = null;
@@ -542,13 +575,8 @@ const Asignacion = () => {
           productos: productosIds,
         };
 
-        if (editRecepcionId) {
-          await axiosClient.put(`/recepciones/${editRecepcionId}`, payload);
-          baseRecepcionId = editRecepcionId;
-        } else {
-          const resp = await axiosClient.post("/recepciones", payload);
-          if (!baseRecepcionId) baseRecepcionId = resp.data.id;
-        }
+        const resp = await axiosClient.post("/recepciones", payload);
+        if (!baseRecepcionId) baseRecepcionId = resp.data.id;
       }
 
       await fetchRecepciones();
@@ -570,16 +598,14 @@ const Asignacion = () => {
       });
       setBienesSeleccionados({});
       setBienesDisponiblesRecep({});
-      setEditRecepcionId(null);
-      setCategoriaEditandoRecep(null);
       setErrores({});
 
-      if (!editRecepcionId && baseRecepcionId) {
+      if (baseRecepcionId) {
         ultimaRecepcionIdRef.current = baseRecepcionId;
 
         Swal.fire({
           title: "Generar Acta de Recepción",
-          text: "Se ha generado el Acta de recepción correspondiente, podrás editarla para ajustar los campos.",
+          text: "Se ha generado el Acta de recepción correspondiente.",
           icon: "warning",
           confirmButtonText: "Aceptar",
           confirmButtonColor: "#635BFF",
@@ -613,46 +639,58 @@ const Asignacion = () => {
     }
   };
 
-  const eliminarAsignacion = async (id) => {
+  // anula una o varias asignaciones que forman un mismo registro agrupado
+  const anularAsignacion = async (ids) => {
     if (lector) {
-      toast.info("Solo lectura: no puedes eliminar asignaciones ");
+      toast.info("Solo lectura: no puedes anular asignaciones ");
       return;
     }
 
     const result = await Swal.fire({
-      title: "¿Eliminar asignación?",
-      text: "Esta acción no se puede deshacer.",
+      title: "¿Anular asignación?",
+      text: "La asignación se marcará como anulada. Puedes indicar el motivo.",
       icon: "warning",
+      input: "textarea",
+      inputPlaceholder: "Motivo...",
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonText: "Sí, anular",
       cancelButtonText: "Cancelar",
     });
 
     if (!result.isConfirmed) return;
 
-    const toastId = toast.loading("Eliminando asignación... ");
+    const motivo = result.value;
+    const toastId = toast.loading("Anulando asignación... ");
 
     try {
-      await axiosClient.delete(`/asignaciones/${id}`);
+      // ids puede ser número o arreglo
+      const arrayIds = Array.isArray(ids) ? ids : [ids];
+      for (const id of arrayIds) {
+        await axiosClient.put(`/asignaciones/${id}`, {
+          activo: false,
+          motivo_anulacion: motivo || null,
+        });
+      }
+
       await fetchAsignaciones();
       await fetchRecepciones();
       await fetchAsignacionesActuales();
 
       toast.update(toastId, {
-        render: "Asignación eliminada correctamente ",
+        render: "Asignación anulada correctamente ",
         type: "success",
         isLoading: false,
         autoClose: 2000,
       });
 
       agregarNotificacion({
-        titulo: "Asignación eliminada",
-        mensaje: "Se eliminó una asignación del sistema",
+        titulo: "Asignación anulada",
+        mensaje: motivo ? `Motivo: ${motivo}` : "Se anuló una asignación",
         fecha: new Date().toISOString(),
       });
     } catch {
       toast.update(toastId, {
-        render: "Error al eliminar la asignación ",
+        render: "Error al anular la asignación ",
         type: "error",
         isLoading: false,
         autoClose: 3000,
@@ -660,72 +698,50 @@ const Asignacion = () => {
     }
   };
 
-  const editarAsignacion = (item) => {
+  // edición deshabilitada: las asignaciones no se pueden modificar, sólo anular.
+  // const editarAsignacion = (item) => { ... }  // función removida intencionalmente
+
+
+  const anularRecepcion = async (id) => {
     if (lector) {
-      toast.info("Solo lectura: no puedes editar asignaciones ");
-      return;
-    }
-
-    fetchAsignacionesActuales();
-
-    setAsignacion({
-      responsable_id: item.responsable_id,
-      fecha_asignacion: item.fecha_asignacion,
-      area_id: item.area_id,
-    });
-
-    setEditId(item.id);
-
-    const cat = item.categoria || item.productos?.[0]?.categoria || null;
-    setCategoriaEditando(cat);
-
-    const agrupados = {};
-    (item.productos || []).forEach((p) => {
-      if (!agrupados[p.categoria]) agrupados[p.categoria] = [];
-      agrupados[p.categoria].push(p);
-    });
-
-    setBienesSeleccionados(agrupados);
-    setErrores({});
-    setModoSubmodal("asignacion");
-    setMostrarModalFormulario(true);
-    setMostrarModalTabla(false);
-  };
-
-  const eliminarRecepcion = async (id) => {
-    if (lector) {
-      toast.info("Solo lectura: no puedes eliminar recepciones ");
+      toast.info("Solo lectura: no puedes anular recepciones ");
       return;
     }
 
     const result = await Swal.fire({
-      title: "¿Eliminar recepción?",
-      text: "Esta acción no se puede deshacer.",
+      title: "¿Anular recepción?",
+      text: "La recepción se marcará como anulada. Puedes indicar un motivo opcional.",
       icon: "warning",
+      input: "textarea",
+      inputPlaceholder: "Motivo (opcional)",
       showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
+      confirmButtonText: "Sí, anular",
       cancelButtonText: "Cancelar",
     });
 
     if (!result.isConfirmed) return;
 
-    const toastId = toast.loading("Eliminando recepción... ");
+    const motivo = result.value;
+    const toastId = toast.loading("Anulando recepción... ");
 
     try {
-      await axiosClient.delete(`/recepciones/${id}`);
+      await axiosClient.put(`/recepciones/${id}`, {
+        activo: false,
+        motivo_anulacion: motivo || null,
+      });
       await fetchRecepciones();
       await fetchAsignaciones();
       await fetchAsignacionesActuales();
 
       toast.update(toastId, {
-        render: "Recepción eliminada correctamente ",
+        render: "Recepción anulada correctamente ",
         type: "success",
         isLoading: false,
         autoClose: 2000,
       });
     } catch {
       toast.update(toastId, {
-        render: "Error al eliminar la recepción ",
+        render: "Error al anular la recepción ",
         type: "error",
         isLoading: false,
         autoClose: 3000,
@@ -733,39 +749,9 @@ const Asignacion = () => {
     }
   };
 
-  const editarRecepcion = (item) => {
-    if (lector) {
-      toast.info("Solo lectura: no puedes editar recepciones ");
-      return;
-    }
+  // edición deshabilitada: las recepciones no se pueden modificar, sólo anular.
+  // const editarRecepcion = (item) => { ... }  // función removida intencionalmente
 
-    fetchAsignacionesActuales();
-
-    setRecepcion({
-      responsable_id: item.responsable_id,
-      fecha_devolucion: item.fecha_devolucion ? item.fecha_devolucion.slice(0, 10) : fechaHoy(),
-      area_id: item.area_id,
-    });
-
-    setEditRecepcionId(item.id);
-
-    const cat = item.categoria || item.productos?.[0]?.categoria || null;
-    setCategoriaEditandoRecep(cat);
-
-    const agrupados = {};
-    (item.productos || []).forEach((p) => {
-      if (!agrupados[p.categoria]) agrupados[p.categoria] = [];
-      agrupados[p.categoria].push(p);
-    });
-
-    setBienesDisponiblesRecep(agrupados);
-    setBienesSeleccionados(agrupados);
-
-    setErrores({});
-    setModoSubmodal("recepcion");
-    setMostrarModalRecepcion(true);
-    setMostrarModalTablaRecep(false);
-  };
 
   const exportarExcelAsignaciones = () => {
     if (asignacionesFiltradas.length === 0) {
@@ -831,8 +817,6 @@ const Asignacion = () => {
                       area_id: "",
                     });
                     setBienesSeleccionados({});
-                    setEditId(null);
-                    setCategoriaEditando(null);
                     setErrores({});
                     setModoSubmodal("asignacion");
                     setMostrarModalFormulario(true);
@@ -855,8 +839,6 @@ const Asignacion = () => {
                     setBienesSeleccionados({});
                     setBienesDisponiblesRecep({});
                     setErrores({});
-                    setEditRecepcionId(null);
-                    setCategoriaEditandoRecep(null);
                     setModoSubmodal("recepcion");
                     setMostrarModalRecepcion(true);
                     fetchAsignacionesActuales();
@@ -907,7 +889,7 @@ const Asignacion = () => {
           }}
         >
           <div className="modal-form-asi" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title-asi">{editId ? "Editar Asignación" : "Nueva Asignación"}</h2>
+            <h2 className="modal-title-asi">Nueva Asignación</h2>
 
             {errores.general && <p className="mensaje-error-general">{errores.general}</p>}
 
@@ -1011,11 +993,7 @@ const Asignacion = () => {
                               : ""
                           }
                           onClick={() => {
-                            if (editId && categoriaEditando && cat !== categoriaEditando) {
-                              toast.info(`En edición solo puedes modificar la categoría "${categoriaEditando}"`);
-                              return;
-                            }
-
+      
                             setModoSubmodal("asignacion");
                             setCategoriaSeleccionada(cat);
                             setPaginaProductosActual(1);
@@ -1069,7 +1047,7 @@ const Asignacion = () => {
           }}
         >
           <div className="modal-form-asi" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title-asi">{editRecepcionId ? "Editar adjudicación" : "Nueva adjudicación"}</h2>
+            <h2 className="modal-title-asi">Nueva adjudicación</h2>
 
             {errores.general && <p className="mensaje-error-general">{errores.general}</p>}
 
@@ -1083,7 +1061,7 @@ const Asignacion = () => {
                       name="responsable_id"
                       className="select-responsable-scroll"
                       value={recepcion.responsable_id}
-                      disabled={!!editRecepcionId}
+
                       onChange={(e) => {
                         const value = e.target.value;
                         setRecepcion((prev) => ({ ...prev, responsable_id: value }));
@@ -1188,10 +1166,6 @@ const Asignacion = () => {
                                 return;
                               }
 
-                              if (editRecepcionId) {
-                                toast.info("Por seguridad, en edición no se pueden cambiar los bienes de la recepción.");
-                                return;
-                              }
 
                               setModoSubmodal("recepcion");
                               setCategoriaSeleccionada(cat);
@@ -1299,21 +1273,28 @@ const Asignacion = () => {
                           <th>Fecha</th>
                           <th>Categoría</th>
                           <th>Productos</th>
-                          {admin && <th>Acciones</th>}
+                          {admin && <th>Accciones</th>}
                         </tr>
                       </thead>
 
                       <tbody>
                         {paginaAsignaciones.length > 0 ? (
                           paginaAsignaciones.map((a) => (
-                            <tr key={a.id}>
-                              <td>{nombreCompleto(a.responsable)}</td>
+                            <tr key={a.id} className={a.activo === false ? "fila-anulada" : ""}>
+                              <td>
+                                {nombreCompleto(a.responsable)}
+                                {!a.activo && (
+                                  <span className="badge-estado inactivo" style={{ marginLeft: 8 }}>
+                                    Anulada
+                                  </span>
+                                )}
+                              </td>
                               <td>
                                 {a.area
                                   ? `${a.area.nombre || a.area.area || "sin nombre"}${a.area.ubicacion ? " - " + a.area.ubicacion : ""}`
                                   : "Sin nombre "}
                               </td>
-                              <td>{a.fecha_asignacion}</td>
+                              <td>{a.fecha_asignacion ? a.fecha_asignacion.slice(0, 10) : ""}</td>
                               <td>{[...new Set((a.productos || []).map((p) => p.categoria))].join(", ")}</td>
                               <td>
                                 {(a.productos || []).map((p) => (
@@ -1324,10 +1305,14 @@ const Asignacion = () => {
                               </td>
                               {admin && (
                                 <td>
-                                  <button className="btn-accion editar" onClick={() => editarAsignacion(a)}>
-                                    <FaEdit />
-                                  </button>
-                                  <button className="btn-accion eliminar" onClick={() => eliminarAsignacion(a.id)}>
+                                  <button
+                                    className="btn-accion eliminar"
+                                    onClick={() =>
+                                      anularAsignacion(a.originalIds ? a.originalIds : a.id)
+                                    }
+                                    disabled={a.activo === false}
+                                    title="Dar de baja"
+                                  >
                                     <FaTrash />
                                   </button>
                                 </td>
@@ -1439,15 +1424,22 @@ const Asignacion = () => {
                           <th>Fecha</th>
                           <th>Categoría</th>
                           <th>Productos</th>
-                          {admin && <th>Acciones</th>}
+                          {admin && <th>Accciones</th>}
                         </tr>
                       </thead>
 
                       <tbody>
                         {paginaRecepciones.length > 0 ? (
                           paginaRecepciones.map((r) => (
-                            <tr key={r.id}>
-                              <td>{nombreCompleto(r.responsable)}</td>
+                            <tr key={r.id} className={r.activo === false ? "fila-anulada" : ""}>
+                              <td>
+                                {nombreCompleto(r.responsable)}
+                                {!r.activo && (
+                                  <span className="badge-estado inactivo" style={{ marginLeft: 8 }}>
+                                    Anulada
+                                  </span>
+                                )}
+                              </td>
                               <td>
                                 {r.area
                                   ? `${r.area.nombre || r.area.area || "sin nombre"}${r.area.ubicacion ? " - " + r.area.ubicacion : ""}`
@@ -1464,10 +1456,12 @@ const Asignacion = () => {
                               </td>
                               {admin && (
                                 <td>
-                                  <button className="btn-accion editar" onClick={() => editarRecepcion(r)}>
-                                    <FaEdit />
-                                  </button>
-                                  <button className="btn-accion eliminar" onClick={() => eliminarRecepcion(r.id)}>
+                                  <button
+                                    className="btn-accion eliminar"
+                                    onClick={() => anularRecepcion(r.id)}
+                                    disabled={r.activo === false}
+                                    title="Dar de baja"
+                                  >
                                     <FaTrash />
                                   </button>
                                 </td>
@@ -1530,10 +1524,24 @@ const Asignacion = () => {
             <h3 className="modal-title">{categoriaSeleccionada}</h3>
 
             {(() => {
-              const productosCat =
+              let productosCat =
                 modoSubmodal === "recepcion"
                   ? bienesDisponiblesRecep[categoriaSeleccionada] || []
                   : productos[categoriaSeleccionada] || [];
+
+              const textoBusquedaProd = (busquedaProd || "").toLowerCase().trim();
+              if (textoBusquedaProd) {
+                productosCat = productosCat.filter((p) => {
+                  const nombre = (p?.nombre || "").toLowerCase();
+                  const codigo = (p?.codigo || "").toLowerCase();
+                  const desc = (p?.descripcion || "").toLowerCase();
+                  return (
+                    nombre.includes(textoBusquedaProd) ||
+                    codigo.includes(textoBusquedaProd) ||
+                    desc.includes(textoBusquedaProd)
+                  );
+                });
+              }
 
               const totalPaginasProd = Math.ceil(productosCat.length / productosPorPagina);
               const indiceUltimoProd = paginaProductosActual * productosPorPagina;
@@ -1543,6 +1551,17 @@ const Asignacion = () => {
 
               return (
                 <>
+                <div className="filtro-bar">
+                  <div className="busqueda-contenedor-pro">
+                                      <FaSearch className="icono-busqueda-pro" />
+                                      <input
+                                        type="text"
+                                        placeholder="Buscar producto..."
+                                        value={busquedaProd}
+                                        onChange={(e) => setBusquedaProd(e.target.value)}
+                                        className="input-busqueda-pro"
+                                      />
+                                    </div>
                   <table className="tabla-elegante mini">
                     <thead>
                       <tr>
@@ -1562,12 +1581,11 @@ const Asignacion = () => {
                         const ocupadoRow = modoSubmodal === "asignacion" ? mapaOcupados.get(Number(p.id)) : null;
 
                         const estaOcupado =
-                          !!ocupadoRow && !(editId && Number(ocupadoRow?.asignacion_id) === Number(editId));
+                          !!ocupadoRow;
 
                         const disabledCheckbox =
                           lector ||
-                          (modoSubmodal === "asignacion" && estaOcupado) ||
-                          (modoSubmodal === "recepcion" && !!editRecepcionId);
+                          (modoSubmodal === "asignacion" && estaOcupado);
 
                         return (
                           <tr key={p.id} style={estaOcupado ? { opacity: 0.65 } : undefined}>
@@ -1601,10 +1619,6 @@ const Asignacion = () => {
                                     return;
                                   }
 
-                                  if (modoSubmodal === "recepcion" && editRecepcionId) {
-                                    toast.info("Por seguridad, en edición no se pueden cambiar los bienes de la recepción.");
-                                    return;
-                                  }
 
                                   if (modoSubmodal === "asignacion" && estaOcupado) {
                                     toast.info("Este bien ya está asignado actualmente.");
@@ -1638,7 +1652,7 @@ const Asignacion = () => {
                       })}
                     </tbody>
                   </table>
-
+</div>
                   <div className="pagination-bar">
                     <span className="pagination-info">
                       Mostrando {productosCat.length === 0 ? 0 : indicePrimeroProd + 1} a{" "}

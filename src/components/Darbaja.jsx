@@ -82,6 +82,7 @@ const GestionBajas = () => {
       return arr;
     } catch (error) {
       console.error(error);
+      if (showLoading) toast.error("Error al cargar asignaciones actuales");
       return [];
     } finally {
       if (showLoading) setCargandoOcupados(false);
@@ -103,11 +104,7 @@ const GestionBajas = () => {
       toast.info("Solo lectura: no puedes dar de baja ");
       return;
     }
-
-    // ✅ abre al instante (NO await)
     setMostrarModalGestionBaja(true);
-
-    // ✅ refresca ocupados en background (sin bloquear UI)
     fetchAsignacionesActuales({ showLoading: true });
   };
 
@@ -120,8 +117,6 @@ const GestionBajas = () => {
       toast.info("Solo lectura: no puedes dar de baja ");
       return;
     }
-
-    // ✅ data fresca (evita stale)
     const fresh = await fetchAsignacionesActuales({ showLoading: true });
     const ocupadosFresh = buildOcupadosSet(fresh);
 
@@ -156,14 +151,11 @@ const GestionBajas = () => {
     }
     if (!productoBaja) return;
 
-    // ✅ validar motivo
     const errMotivo = validarMotivo(motivoBaja);
     if (errMotivo) {
       toast.warning(errMotivo);
       return;
     }
-
-    // ✅ re-validar con data fresca justo antes de guardar
     const fresh = await fetchAsignacionesActuales({ showLoading: true });
     const ocupadosFresh = buildOcupadosSet(fresh);
 
@@ -172,8 +164,6 @@ const GestionBajas = () => {
       setMostrarModalBaja(false);
       return;
     }
-
-  // ✅ Cierra tu modal ANTES del confirm (para que no tape el Swal)
 setMostrarModalBaja(false);
 
 const confirm = await Swal.fire({
@@ -185,8 +175,6 @@ const confirm = await Swal.fire({
   cancelButtonText: "Cancelar",
   confirmButtonColor: "#d33",
 });
-
-// ✅ Si cancela, reabrimos el modal para que no pierda lo escrito
 if (!confirm.isConfirmed) {
   setMostrarModalBaja(true);
   return;
@@ -290,15 +278,15 @@ if (!confirm.isConfirmed) {
   const indexInicioActivos = indexFinalActivos - registrosPorPagina;
   const activosPagina = productosActivosFiltrados.slice(indexInicioActivos, indexFinalActivos);
   const totalPaginasActivos = Math.ceil(productosActivosFiltrados.length / registrosPorPagina);
-  const paginasActivos =
-    totalPaginasActivos > 0 ? Array.from({ length: totalPaginasActivos }, (_, i) => i + 1) : [];
+//  const paginasActivos =
+  //  totalPaginasActivos > 0 ? Array.from({ length: totalPaginasActivos }, (_, i) => i + 1) : [];
 
   const indexFinalInactivos = paginaInactivos * registrosPorPagina;
   const indexInicioInactivos = indexFinalInactivos - registrosPorPagina;
   const inactivosPagina = productosInactivosFiltrados.slice(indexInicioInactivos, indexFinalInactivos);
   const totalPaginasInactivos = Math.ceil(productosInactivosFiltrados.length / registrosPorPagina);
-  const paginasInactivos =
-    totalPaginasInactivos > 0 ? Array.from({ length: totalPaginasInactivos }, (_, i) => i + 1) : [];
+  //const paginasInactivos =
+  // totalPaginasInactivos > 0 ? Array.from({ length: totalPaginasInactivos }, (_, i) => i + 1) : [];
 const obtenerPaginasVisibles = (paginaActual, totalPaginas, rango = 2) => {
   const paginas = [];
 

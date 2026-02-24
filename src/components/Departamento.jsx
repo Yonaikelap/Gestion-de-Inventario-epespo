@@ -12,7 +12,7 @@ import {
   FaUserTie,
   FaSearch,
 } from "react-icons/fa";
-import { ToastContainer, toast } from "react-toastify";
+import {  toast } from "react-toastify";
 import axiosClient from "../api/axiosClient";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
@@ -665,8 +665,6 @@ const importarExcel = (file) => {
           </div>
         </div>
       )}
-
-      <ToastContainer position="top-right" autoClose={2000} hideProgressBar closeButton={false} />
     </div>
   );
 };

@@ -8,7 +8,12 @@
 .actas-main {
   max-width: 1400px;
   margin: 0 auto;
+
+  padding-left: 120px; 
+  padding-right: 40px;
+  box-sizing: border-box;
 }
+
 
 .actas-content {
   padding: 30px 40px;
@@ -80,7 +85,7 @@
   padding: 10px 12px 10px 30px;
   border: 1px solid #dcdcdc;
   border-radius: 12px;
-  min-width: 240px;
+  min-width: 150px;
   background: #fff;
 }
 
@@ -164,6 +169,19 @@
    ================================ */
 .docs-cell {
   white-space: nowrap;
+}
+
+/* filas de actas anuladas */
+.fila-anulada {
+  background-color: #ffeaea !important;
+  color: #6b6b6b;
+}
+
+/* deshabilitar botones dentro de filas anuladas */
+.fila-anulada .btn-accion {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .btn-accion {

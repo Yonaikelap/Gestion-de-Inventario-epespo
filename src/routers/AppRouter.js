@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { NotificacionesProvider } from "../context/NotificacionesContext";
 
-import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import ProtectedRoute from "./ProtectedRoute";
@@ -26,17 +25,6 @@ const AppRouter = () => {
   return (
     <NotificacionesProvider>
       <Router>
-        <ToastContainer
-          position="top-right"
-          autoClose={2500}
-          hideProgressBar
-          newestOnTop
-          closeOnClick
-          pauseOnHover={false}
-          draggable={false}
-          limit={2}
-        />
-
         <Routes>
           <Route path="/" element={<LoginRedirect />} />
           <Route path="/login" element={<Login />} />
@@ -50,8 +38,6 @@ const AppRouter = () => {
             <Route path="/departamento" element={<Departamento />} />
             <Route path="/historial" element={<Historial />} />
             <Route path="/actas" element={<Actas />} />
-          </Route>
-          <Route element={<ProtectedRoute rolesPermitidos={["admin"]} />}>
             <Route path="/dar-baja" element={<Darbaja />} />
             <Route path="/ajustes" element={<Ajustes />} />
           </Route>

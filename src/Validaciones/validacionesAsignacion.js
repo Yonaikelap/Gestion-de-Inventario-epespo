@@ -14,9 +14,8 @@ const esFechaValidaNoFutura = (fechaStr) => {
   return { ok: true };
 };
 
-const contarSeleccionados = (bienesSeleccionados = {}, categoriaEditando = null) => {
-  let cats = Object.keys(bienesSeleccionados || {}).filter((cat) => (bienesSeleccionados[cat] || []).length > 0);
-  if (categoriaEditando) cats = [categoriaEditando];
+const contarSeleccionados = (bienesSeleccionados = {}) => {
+  const cats = Object.keys(bienesSeleccionados || {}).filter((cat) => (bienesSeleccionados[cat] || []).length > 0);
 
   const total = cats.reduce((acc, cat) => acc + (bienesSeleccionados[cat]?.length || 0), 0);
   return { cats, total };
@@ -26,9 +25,7 @@ export const validarAsignacion = (
   asignacion,
   bienesSeleccionados,
   asignacionesHistorial = [],
-  asignacionesActuales = [],
-  editId = null,
-  categoriaEditando = null
+  asignacionesActuales = []
 ) => {
   const errores = {};
 
@@ -43,28 +40,23 @@ export const validarAsignacion = (
     errores.area_id = "Debe seleccionar un departamento / área";
   }
 
-  const { cats, total } = contarSeleccionados(
-    bienesSeleccionados,
-    editId && categoriaEditando ? categoriaEditando : null
-  );
+  const { cats, total } = contarSeleccionados(bienesSeleccionados);
 
   if (total === 0) {
     errores.bienes = "Debe seleccionar al menos un bien para asignar";
     return errores;
   }
 
-  if (!editId) {
-    const areaNum = Number(asignacion.area_id);
-    const respNum = Number(asignacion.responsable_id);
+  const areaNum = Number(asignacion.area_id);
+  const respNum = Number(asignacion.responsable_id);
 
-    const yaExiste = (asignacionesHistorial || []).some(
-      (a) => Number(a.responsable_id) === respNum && Number(a.area_id) === areaNum && cats.includes(a.categoria)
-    );
+  const yaExiste = (asignacionesHistorial || []).some(
+    (a) => Number(a.responsable_id) === respNum && Number(a.area_id) === areaNum && cats.includes(a.categoria)
+  );
 
-    if (yaExiste) {
-      errores.general = "Ya existe una asignación para ese responsable, área y categoría";
-      return errores;
-    }
+  if (yaExiste) {
+    errores.general = "Ya existe una asignación para ese responsable, área y categoría";
+    return errores;
   }
 
   const ocupados = new Map();
@@ -84,9 +76,6 @@ export const validarAsignacion = (
       const row = ocupados.get(pid);
       if (!row) return;
 
-      const asignacionRowId = Number(row?.asignacion_id);
-      if (editId && asignacionRowId === Number(editId)) return;
-
       conflictos.push(`${p?.codigo || "S/C"} - ${p?.nombre || "Sin nombre"}`);
     });
   });
@@ -101,9 +90,7 @@ export const validarAsignacion = (
 export const validarRecepcion = (
   recepcion,
   bienesSeleccionados,
-  asignacionesActuales = [],
-  editRecepcionId = null,
-  categoriaEditandoRecep = null
+  asignacionesActuales = []
 ) => {
   const errores = {};
 
@@ -118,10 +105,7 @@ export const validarRecepcion = (
     errores.area_id = "Debe seleccionar un departamento / área";
   }
 
-  const { cats, total } = contarSeleccionados(
-    bienesSeleccionados,
-    editRecepcionId && categoriaEditandoRecep ? categoriaEditandoRecep : null
-  );
+  const { cats, total } = contarSeleccionados(bienesSeleccionados);
 
   if (total === 0) {
     errores.bienes = "Debe seleccionar al menos un bien para la recepción";

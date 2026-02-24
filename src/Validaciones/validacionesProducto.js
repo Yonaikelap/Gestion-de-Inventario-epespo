@@ -10,7 +10,7 @@ export const validarTexto = (valor, campo = "campo") => {
   if (!limpio) return `El ${campo} es obligatorio`;
   if (limpio.length < 1) return `El ${campo} debe tener al menos 3 caracteres`;
   if (limpio.length > 255) return `El ${campo} no debe exceder 255 caracteres`;
-if (!/^[a-zA-Z0-9\sáéíóúÁÉÍÓÚñÑ.,\-()\/_]+$/.test(limpio)) {
+if (!/^[a-zA-Z0-9\sáéíóúÁÉÍÓÚñÑ.,\-()/_]+$/.test(limpio)) {
   return `El ${campo} contiene caracteres no válidos`;
 }
 
@@ -25,7 +25,7 @@ export const validarNumeroSerie = (valor) => {
     return "El número de serie debe tener al menos 3 caracteres";
   if (limpio.length > 60)
     return "El número de serie no debe exceder 60 caracteres";
-  if (!/^[A-Za-z0-9._\-\/]+$/.test(limpio)) {
+  if (!/^[A-Za-z0-9._\-/]+$/.test(limpio)) {
     return "El número de serie contiene caracteres no válidos";
   }
   return null;
